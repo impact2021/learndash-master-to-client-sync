@@ -358,9 +358,11 @@ class LDMCS_Sync {
 			return $post_id;
 		}
 
-		// Store master ID for content mapping.
+		// Store master ID and UUID for content mapping.
 		update_post_meta( $post_id, '_ldmcs_master_id', $item['id'] );
 		update_post_meta( $post_id, '_ldmcs_last_sync', current_time( 'mysql' ) );
+		// Ensure the UUID is set on the client post (same as master)
+		update_post_meta( $post_id, self::UUID_META_KEY, $item['id'] );
 
 		// Update ONLY course structure metadata (no user data).
 		// The metadata filtering in get_learndash_meta() ensures user progress is excluded.
@@ -417,9 +419,11 @@ class LDMCS_Sync {
 			return false;
 		}
 
-		// Update master ID and sync time for content mapping.
+		// Update master ID, UUID, and sync time for content mapping.
 		update_post_meta( $post_id, '_ldmcs_master_id', $item['id'] );
 		update_post_meta( $post_id, '_ldmcs_last_sync', current_time( 'mysql' ) );
+		// Ensure the UUID is set on the client post (same as master)
+		update_post_meta( $post_id, self::UUID_META_KEY, $item['id'] );
 
 		// Update ONLY course structure metadata (no user data).
 		// The metadata filtering in get_learndash_meta() ensures user progress is excluded.

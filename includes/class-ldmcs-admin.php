@@ -605,11 +605,12 @@ class LDMCS_Admin {
 				// On master site, show the ld_uuid custom field if available, otherwise show post ID.
 				echo '<strong>' . esc_html( $this->get_display_uuid( $post_id ) ) . '</strong>';
 			} else {
-				// On client site, show both local ID and master UUID.
+				// On client site, show both local UUID and master UUID.
 				$master_id = get_post_meta( $post_id, '_ldmcs_master_id', true );
+				$local_uuid = $this->get_display_uuid( $post_id );
 				
 				echo '<div class="ldmcs-uuid-info">';
-				echo '<div><strong>' . esc_html__( 'Local:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $post_id ) . '</div>';
+				echo '<div><strong>' . esc_html__( 'Local:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $local_uuid ) . '</div>';
 				
 				if ( $master_id ) {
 					echo '<div><strong>' . esc_html__( 'Master:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $master_id ) . '</div>';
