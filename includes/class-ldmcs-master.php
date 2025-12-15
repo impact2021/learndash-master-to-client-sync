@@ -454,7 +454,17 @@ class LDMCS_Master {
 		);
 
 		if ( 'courses' === $content_type ) {
-			$items = array_merge( $items, $this->get_related_course_content( $post_id ) );
+			$related_content = $this->get_related_course_content( $post_id );
+			$items = array_merge( $items, $related_content );
+			
+			// Log how many related items were found.
+			LDMCS_Logger::log(
+				'master_push',
+				$content_type,
+				$post_id,
+				'info',
+				sprintf( 'Found %d related content items for course "%s"', count( $related_content ), $post->post_title )
+			);
 		}
 
 		// Push to each client site.
@@ -634,23 +644,80 @@ class LDMCS_Master {
 	private function get_related_course_content( $course_id ) {
 		$items = array();
 
-		// Get lessons associated with this course.
-		$lessons = learndash_get_course_lessons_list( $course_id );
-		if ( ! empty( $lessons ) ) {
-			foreach ( $lessons as $lesson ) {
-				$lesson_post = get_post( $lesson['id'] );
-				if ( $lesson_post ) {
+		// Use LearnDash's core function to get all course steps if available (LearnDash 3.0+).
+		if ( function_exists( 'learndash_course_get_steps' ) ) {
+			// Get all steps (lessons and topics) for the course.
+			$course_steps = learndash_course_get_steps( $course_id );
+			
+			if ( ! empty( $course_steps ) ) {
+				foreach ( $course_steps as $step_id ) {
+					$step_post = get_post( $step_id );
+					if ( ! $step_post ) {
+						continue;
+					}
+
+					// Determine the content type based on post type.
+					$content_type = LDMCS_Sync::get_content_type_from_post_type( $step_post->post_type );
+					
+					if ( $content_type ) {
+						$items[] = array(
+							'type' => $content_type,
+							'data' => $this->prepare_push_item( $step_post, $content_type ),
+						);
+					}
+				}
+			}
+
+			// Get course quizzes using LearnDash 3.0+ method.
+			$course_quizzes = learndash_course_get_children( $course_id, 'sfwd-quiz' );
+			if ( ! empty( $course_quizzes ) && is_array( $course_quizzes ) ) {
+				foreach ( $course_quizzes as $quiz_id ) {
+					$quiz_post = get_post( $quiz_id );
+					if ( $quiz_post ) {
+						$items[] = array(
+							'type' => 'quizzes',
+							'data' => $this->prepare_push_item( $quiz_post, 'quizzes' ),
+						);
+
+						// Get questions for this quiz.
+						$items = array_merge( $items, $this->get_quiz_questions( $quiz_id ) );
+					}
+				}
+			}
+		} else {
+			// Fallback for older LearnDash versions or alternative approach.
+			$items = $this->get_related_course_content_legacy( $course_id );
+		}
+
+		return $items;
+	}
+
+	/**
+	 * Get related course content using legacy methods (fallback).
+	 *
+	 * @param int $course_id Course ID.
+	 * @return array Related content items.
+	 */
+	private function get_related_course_content_legacy( $course_id ) {
+		$items = array();
+
+		// Get lessons using meta query as fallback.
+		$lesson_ids = $this->get_course_lessons_meta( $course_id );
+		if ( ! empty( $lesson_ids ) ) {
+			foreach ( $lesson_ids as $lesson_id ) {
+				$lesson_post = get_post( $lesson_id );
+				if ( $lesson_post && 'sfwd-lessons' === $lesson_post->post_type ) {
 					$items[] = array(
 						'type' => 'lessons',
 						'data' => $this->prepare_push_item( $lesson_post, 'lessons' ),
 					);
 
 					// Get topics for this lesson.
-					$topics = learndash_get_topic_list( $lesson['id'], $course_id );
-					if ( ! empty( $topics ) ) {
-						foreach ( $topics as $topic ) {
-							$topic_post = get_post( $topic->ID );
-							if ( $topic_post ) {
+					$topic_ids = $this->get_lesson_topics_meta( $lesson_id, $course_id );
+					if ( ! empty( $topic_ids ) ) {
+						foreach ( $topic_ids as $topic_id ) {
+							$topic_post = get_post( $topic_id );
+							if ( $topic_post && 'sfwd-topic' === $topic_post->post_type ) {
 								$items[] = array(
 									'type' => 'topics',
 									'data' => $this->prepare_push_item( $topic_post, 'topics' ),
@@ -658,31 +725,20 @@ class LDMCS_Master {
 							}
 						}
 					}
-				}
-			}
-		}
 
-		// Get quizzes associated with this course.
-		$quizzes = learndash_get_course_quiz_list( $course_id );
-		if ( ! empty( $quizzes ) ) {
-			foreach ( $quizzes as $quiz ) {
-				$quiz_post = get_post( $quiz['id'] );
-				if ( $quiz_post ) {
-					$items[] = array(
-						'type' => 'quizzes',
-						'data' => $this->prepare_push_item( $quiz_post, 'quizzes' ),
-					);
-
-					// Get questions for this quiz.
-					$questions = learndash_get_quiz_questions( $quiz['id'] );
-					if ( ! empty( $questions ) ) {
-						foreach ( $questions as $question ) {
-							$question_post = get_post( $question['id'] );
-							if ( $question_post ) {
+					// Get quizzes for this lesson.
+					$lesson_quiz_ids = $this->get_lesson_quizzes_meta( $lesson_id );
+					if ( ! empty( $lesson_quiz_ids ) ) {
+						foreach ( $lesson_quiz_ids as $quiz_id ) {
+							$quiz_post = get_post( $quiz_id );
+							if ( $quiz_post && 'sfwd-quiz' === $quiz_post->post_type ) {
 								$items[] = array(
-									'type' => 'questions',
-									'data' => $this->prepare_push_item( $question_post, 'questions' ),
+									'type' => 'quizzes',
+									'data' => $this->prepare_push_item( $quiz_post, 'quizzes' ),
 								);
+
+								// Get questions for this quiz.
+								$items = array_merge( $items, $this->get_quiz_questions( $quiz_id ) );
 							}
 						}
 					}
@@ -690,6 +746,238 @@ class LDMCS_Master {
 			}
 		}
 
+		// Get course-level quizzes.
+		$course_quiz_ids = $this->get_course_quizzes_meta( $course_id );
+		if ( ! empty( $course_quiz_ids ) ) {
+			foreach ( $course_quiz_ids as $quiz_id ) {
+				$quiz_post = get_post( $quiz_id );
+				if ( $quiz_post && 'sfwd-quiz' === $quiz_post->post_type ) {
+					// Check if already added from lesson processing.
+					if ( ! $this->is_quiz_already_added( $quiz_id, $items ) ) {
+						$items[] = array(
+							'type' => 'quizzes',
+							'data' => $this->prepare_push_item( $quiz_post, 'quizzes' ),
+						);
+
+						// Get questions for this quiz.
+						$items = array_merge( $items, $this->get_quiz_questions( $quiz_id ) );
+					}
+				}
+			}
+		}
+
 		return $items;
+	}
+
+	/**
+	 * Get quiz questions.
+	 *
+	 * @param int $quiz_id Quiz ID.
+	 * @return array Question items.
+	 */
+	private function get_quiz_questions( $quiz_id ) {
+		$items = array();
+
+		// Try different methods to get quiz questions.
+		$question_ids = array();
+
+		// Method 1: Use LearnDash function if available.
+		if ( function_exists( 'learndash_get_quiz_questions' ) ) {
+			$questions = learndash_get_quiz_questions( $quiz_id );
+			if ( is_array( $questions ) ) {
+				foreach ( $questions as $question ) {
+					$question_id = $this->extract_question_id( $question );
+					if ( $question_id ) {
+						$question_ids[] = $question_id;
+					}
+				}
+			}
+		}
+
+		// Method 2: Get from post meta as fallback.
+		if ( empty( $question_ids ) ) {
+			$question_ids = $this->get_quiz_questions_meta( $quiz_id );
+		}
+
+		// Process question IDs.
+		if ( ! empty( $question_ids ) ) {
+			foreach ( $question_ids as $question_id ) {
+				$question_post = get_post( $question_id );
+				if ( $question_post && 'sfwd-question' === $question_post->post_type ) {
+					$items[] = array(
+						'type' => 'questions',
+						'data' => $this->prepare_push_item( $question_post, 'questions' ),
+					);
+				}
+			}
+		}
+
+		return $items;
+	}
+
+	/**
+	 * Get course lessons from meta.
+	 *
+	 * @param int $course_id Course ID.
+	 * @return array Lesson IDs.
+	 */
+	private function get_course_lessons_meta( $course_id ) {
+		$lessons = get_post_meta( $course_id, 'ld_course_steps', true );
+		if ( ! empty( $lessons ) && is_array( $lessons ) && isset( $lessons['sfwd-lessons'] ) ) {
+			return array_keys( $lessons['sfwd-lessons'] );
+		}
+		
+		// Alternative: Get from course_lessons meta key.
+		$lesson_ids = get_post_meta( $course_id, 'course_lessons', true );
+		if ( ! empty( $lesson_ids ) && is_array( $lesson_ids ) ) {
+			return $lesson_ids;
+		}
+
+		return array();
+	}
+
+	/**
+	 * Get lesson topics from meta.
+	 *
+	 * @param int $lesson_id Lesson ID.
+	 * @param int $course_id Course ID.
+	 * @return array Topic IDs.
+	 */
+	private function get_lesson_topics_meta( $lesson_id, $course_id ) {
+		// Try ld_course_steps meta first.
+		$steps = get_post_meta( $course_id, 'ld_course_steps', true );
+		// LearnDash uses 'h' prefix for hierarchical lesson keys in the steps array.
+		// Format: $steps['sfwd-lessons']['h123'] where 123 is the lesson ID.
+		if ( ! empty( $steps ) && is_array( $steps ) && isset( $steps['sfwd-lessons'][ 'h' . $lesson_id ] ) ) {
+			return array_keys( $steps['sfwd-lessons'][ 'h' . $lesson_id ] );
+		}
+
+		// Alternative: Get topics by lesson parent.
+		$topic_query = new WP_Query(
+			array(
+				'post_type'      => 'sfwd-topic',
+				'posts_per_page' => -1,
+				'post_status'    => 'any',
+				'meta_query'     => array(
+					array(
+						'key'   => 'lesson_id',
+						'value' => $lesson_id,
+					),
+					array(
+						'key'   => 'course_id',
+						'value' => $course_id,
+					),
+				),
+				'fields'         => 'ids',
+			)
+		);
+
+		return $topic_query->posts;
+	}
+
+	/**
+	 * Get course quizzes from meta.
+	 *
+	 * @param int $course_id Course ID.
+	 * @return array Quiz IDs.
+	 */
+	private function get_course_quizzes_meta( $course_id ) {
+		$quizzes = get_post_meta( $course_id, 'ld_course_steps', true );
+		if ( ! empty( $quizzes ) && is_array( $quizzes ) && isset( $quizzes['sfwd-quiz'] ) ) {
+			return array_keys( $quizzes['sfwd-quiz'] );
+		}
+
+		// Alternative: Get from course_quiz meta key.
+		$quiz_ids = get_post_meta( $course_id, 'course_quiz', true );
+		if ( ! empty( $quiz_ids ) && is_array( $quiz_ids ) ) {
+			return $quiz_ids;
+		}
+
+		return array();
+	}
+
+	/**
+	 * Get lesson quizzes from meta.
+	 *
+	 * @param int $lesson_id Lesson ID.
+	 * @return array Quiz IDs.
+	 */
+	private function get_lesson_quizzes_meta( $lesson_id ) {
+		$quiz_ids = get_post_meta( $lesson_id, 'lesson_quiz', true );
+		if ( ! empty( $quiz_ids ) && is_array( $quiz_ids ) ) {
+			return $quiz_ids;
+		}
+
+		return array();
+	}
+
+	/**
+	 * Get quiz questions from meta.
+	 *
+	 * @param int $quiz_id Quiz ID.
+	 * @return array Question IDs.
+	 */
+	private function get_quiz_questions_meta( $quiz_id ) {
+		// Get questions from quiz meta.
+		$questions = get_post_meta( $quiz_id, 'ld_quiz_questions', true );
+		if ( ! empty( $questions ) && is_array( $questions ) ) {
+			return $questions;
+		}
+
+		// Alternative: Get from quiz_question_list.
+		$question_ids = get_post_meta( $quiz_id, 'quiz_question_list', true );
+		if ( ! empty( $question_ids ) && is_array( $question_ids ) ) {
+			return $question_ids;
+		}
+
+		return array();
+	}
+
+	/**
+	 * Check if a quiz is already in the items array.
+	 *
+	 * @param int   $quiz_id Quiz ID to check.
+	 * @param array $items   Array of items to search.
+	 * @return bool True if quiz is already added, false otherwise.
+	 */
+	private function is_quiz_already_added( $quiz_id, $items ) {
+		$quiz_uuid = get_post_meta( $quiz_id, LDMCS_Sync::UUID_META_KEY, true );
+		
+		foreach ( $items as $item ) {
+			if ( 'quizzes' !== $item['type'] || ! isset( $item['data']['id'] ) ) {
+				continue;
+			}
+			
+			$item_uuid = $item['data']['id'];
+			
+			// Match by UUID if both have UUIDs, otherwise match by post ID.
+			if ( ! empty( $quiz_uuid ) && $item_uuid === $quiz_uuid ) {
+				return true;
+			}
+			
+			if ( empty( $quiz_uuid ) && $item['data']['id'] === $quiz_id ) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
+	/**
+	 * Extract question ID from question data (handles array or object format).
+	 *
+	 * @param array|object $question Question data from LearnDash.
+	 * @return int|null Question ID or null if not found.
+	 */
+	private function extract_question_id( $question ) {
+		if ( is_array( $question ) && isset( $question['id'] ) ) {
+			return $question['id'];
+		}
+		
+		if ( is_object( $question ) && isset( $question->ID ) ) {
+			return $question->ID;
+		}
+		
+		return null;
 	}
 }

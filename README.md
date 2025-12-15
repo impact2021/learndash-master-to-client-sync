@@ -160,6 +160,17 @@ All endpoints require authentication via the `X-LDMCS-API-Key` header.
 - Verify content types are enabled in settings
 - Check that content exists on the master site
 
+### Course Lessons/Topics/Quizzes Not Syncing
+
+If a course syncs but the lessons, topics, quizzes, and questions don't transfer:
+
+1. **Generate UUIDs**: Go to **LearnDash Sync > Settings** and click **"Generate UUIDs for All Content"**
+2. **Check Course Structure**: Edit the course on master site and verify all content is properly associated in LearnDash Builder
+3. **Verify Content Status**: Ensure all lessons, topics, quizzes are published (not draft)
+4. **Check Sync Logs**: Look for "Found X related content items" message to see if content was detected
+5. **Re-save Course**: Edit and save the course to refresh LearnDash relationships
+6. **See Documentation**: Check `COURSE_CONTENT_SYNC_FIX.md` for detailed troubleshooting steps
+
 ## Development
 
 ### File Structure
