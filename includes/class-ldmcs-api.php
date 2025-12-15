@@ -245,11 +245,19 @@ class LDMCS_API {
 	 * @return WP_REST_Response
 	 */
 	public function verify_connection( $request ) {
+		// Track the client site connection.
+		$client_site_url = $request->get_header( 'X-LDMCS-Client-URL' );
+		if ( $client_site_url ) {
+			$master = LDMCS_Master::get_instance();
+			$master->register_client_site( $client_site_url, $client_site_url );
+		}
+
 		return new WP_REST_Response(
 			array(
 				'success'  => true,
 				'message'  => __( 'Connection verified successfully.', 'learndash-master-client-sync' ),
 				'site_url' => get_site_url(),
+				'site_name' => get_bloginfo( 'name' ),
 				'version'  => LDMCS_VERSION,
 			)
 		);

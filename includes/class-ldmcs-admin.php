@@ -66,6 +66,28 @@ class LDMCS_Admin {
 			array( $this, 'render_settings_page' )
 		);
 
+		// Add courses page for master site.
+		$mode = get_option( 'ldmcs_mode', 'client' );
+		if ( 'master' === $mode ) {
+			add_submenu_page(
+				'ldmcs-settings',
+				__( 'Courses', 'learndash-master-client-sync' ),
+				__( 'Courses', 'learndash-master-client-sync' ),
+				'manage_options',
+				'ldmcs-courses',
+				array( $this, 'render_courses_page' )
+			);
+
+			add_submenu_page(
+				'ldmcs-settings',
+				__( 'Client Sites', 'learndash-master-client-sync' ),
+				__( 'Client Sites', 'learndash-master-client-sync' ),
+				'manage_options',
+				'ldmcs-client-sites',
+				array( $this, 'render_client_sites_page' )
+			);
+		}
+
 		add_submenu_page(
 			'ldmcs-settings',
 			__( 'Sync Logs', 'learndash-master-client-sync' ),
@@ -128,6 +150,7 @@ class LDMCS_Admin {
 				'ajaxUrl'               => admin_url( 'admin-ajax.php' ),
 				'manualSyncNonce'       => wp_create_nonce( 'ldmcs_manual_sync' ),
 				'verifyConnectionNonce' => wp_create_nonce( 'ldmcs_verify_connection' ),
+				'pushCourseNonce'       => wp_create_nonce( 'ldmcs_push_course' ),
 				'strings'               => array(
 					'syncing'             => __( 'Syncing...', 'learndash-master-client-sync' ),
 					'syncComplete'        => __( 'Sync completed!', 'learndash-master-client-sync' ),
@@ -135,6 +158,10 @@ class LDMCS_Admin {
 					'verifying'           => __( 'Verifying connection...', 'learndash-master-client-sync' ),
 					'connectionVerified'  => __( 'Connection verified successfully!', 'learndash-master-client-sync' ),
 					'connectionFailed'    => __( 'Connection failed. Please check your settings.', 'learndash-master-client-sync' ),
+					'pushing'             => __( 'Pushing course...', 'learndash-master-client-sync' ),
+					'pushComplete'        => __( 'Course pushed successfully!', 'learndash-master-client-sync' ),
+					'pushError'           => __( 'Failed to push course.', 'learndash-master-client-sync' ),
+					'confirmPush'         => __( 'Push this course to all connected client sites?', 'learndash-master-client-sync' ),
 				),
 			)
 		);
@@ -326,6 +353,153 @@ class LDMCS_Admin {
 					<?php endif; ?>
 				</tbody>
 			</table>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render courses page.
+	 */
+	public function render_courses_page() {
+		// Get all LearnDash courses.
+		$args = array(
+			'post_type'      => 'sfwd-courses',
+			'posts_per_page' => -1,
+			'post_status'    => 'publish',
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		);
+
+		$courses = get_posts( $args );
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'LearnDash Courses', 'learndash-master-client-sync' ); ?></h1>
+			<p class="description">
+				<?php esc_html_e( 'Push individual courses to connected client sites. The Master UUID is the unique identifier for each course on this master site.', 'learndash-master-client-sync' ); ?>
+			</p>
+
+			<?php if ( empty( $courses ) ) : ?>
+				<div class="notice notice-info">
+					<p><?php esc_html_e( 'No courses found. Create some LearnDash courses first.', 'learndash-master-client-sync' ); ?></p>
+				</div>
+			<?php else : ?>
+				<table class="wp-list-table widefat fixed striped">
+					<thead>
+						<tr>
+							<th style="width: 60px;"><?php esc_html_e( 'Master UUID', 'learndash-master-client-sync' ); ?></th>
+							<th><?php esc_html_e( 'Course Title', 'learndash-master-client-sync' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'learndash-master-client-sync' ); ?></th>
+							<th><?php esc_html_e( 'Last Modified', 'learndash-master-client-sync' ); ?></th>
+							<th style="width: 150px;"><?php esc_html_e( 'Actions', 'learndash-master-client-sync' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $courses as $course ) : ?>
+						<tr>
+							<td><strong><?php echo esc_html( $course->ID ); ?></strong></td>
+							<td>
+								<strong><?php echo esc_html( $course->post_title ); ?></strong>
+								<div class="row-actions">
+									<span class="edit">
+										<a href="<?php echo esc_url( get_edit_post_link( $course->ID ) ); ?>">
+											<?php esc_html_e( 'Edit', 'learndash-master-client-sync' ); ?>
+										</a>
+									</span>
+									|
+									<span class="view">
+										<a href="<?php echo esc_url( get_permalink( $course->ID ) ); ?>" target="_blank">
+											<?php esc_html_e( 'View', 'learndash-master-client-sync' ); ?>
+										</a>
+									</span>
+								</div>
+							</td>
+							<td>
+								<span class="ldmcs-status ldmcs-status-<?php echo esc_attr( $course->post_status ); ?>">
+									<?php echo esc_html( ucfirst( $course->post_status ) ); ?>
+								</span>
+							</td>
+							<td><?php echo esc_html( get_the_modified_date( 'Y-m-d H:i:s', $course->ID ) ); ?></td>
+							<td>
+								<button type="button" class="button button-primary ldmcs-push-course" data-course-id="<?php echo esc_attr( $course->ID ); ?>" data-course-title="<?php echo esc_attr( $course->post_title ); ?>">
+									<?php esc_html_e( 'Push to Clients', 'learndash-master-client-sync' ); ?>
+								</button>
+								<div class="ldmcs-push-status" id="ldmcs-push-status-<?php echo esc_attr( $course->ID ); ?>"></div>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render client sites page.
+	 */
+	public function render_client_sites_page() {
+		// Get list of client sites.
+		$client_sites = get_option( 'ldmcs_client_sites', array() );
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Connected Client Sites', 'learndash-master-client-sync' ); ?></h1>
+			<p class="description">
+				<?php esc_html_e( 'List of client sites that have connected to this master site. Client sites are automatically registered when they verify their connection.', 'learndash-master-client-sync' ); ?>
+			</p>
+
+			<?php if ( empty( $client_sites ) ) : ?>
+				<div class="notice notice-info">
+					<p><?php esc_html_e( 'No client sites have connected yet. Configure a client site to connect to this master site.', 'learndash-master-client-sync' ); ?></p>
+				</div>
+			<?php else : ?>
+				<table class="wp-list-table widefat fixed striped">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Site URL', 'learndash-master-client-sync' ); ?></th>
+							<th><?php esc_html_e( 'Site Name', 'learndash-master-client-sync' ); ?></th>
+							<th><?php esc_html_e( 'First Connected', 'learndash-master-client-sync' ); ?></th>
+							<th><?php esc_html_e( 'Last Connected', 'learndash-master-client-sync' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'learndash-master-client-sync' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $client_sites as $client_id => $client_data ) : ?>
+						<?php
+						$first_connected = isset( $client_data['first_connected'] ) ? $client_data['first_connected'] : __( 'Unknown', 'learndash-master-client-sync' );
+						$last_connected  = isset( $client_data['last_connected'] ) ? $client_data['last_connected'] : __( 'Unknown', 'learndash-master-client-sync' );
+						$site_url        = isset( $client_data['site_url'] ) ? $client_data['site_url'] : __( 'Unknown', 'learndash-master-client-sync' );
+						$site_name       = isset( $client_data['site_name'] ) ? $client_data['site_name'] : __( 'Unknown', 'learndash-master-client-sync' );
+						
+						// Calculate status based on last connection time.
+						$status       = 'active';
+						$status_label = __( 'Active', 'learndash-master-client-sync' );
+						if ( 'Unknown' !== $last_connected ) {
+							$last_time = strtotime( $last_connected );
+							$now       = current_time( 'timestamp' );
+							$diff_days = ( $now - $last_time ) / DAY_IN_SECONDS;
+							if ( $diff_days > 7 ) {
+								$status       = 'inactive';
+								$status_label = __( 'Inactive', 'learndash-master-client-sync' );
+							}
+						}
+						?>
+						<tr>
+							<td>
+								<strong><a href="<?php echo esc_url( $site_url ); ?>" target="_blank"><?php echo esc_html( $site_url ); ?></a></strong>
+							</td>
+							<td><?php echo esc_html( $site_name ); ?></td>
+							<td><?php echo esc_html( $first_connected ); ?></td>
+							<td><?php echo esc_html( $last_connected ); ?></td>
+							<td>
+								<span class="ldmcs-status ldmcs-status-<?php echo esc_attr( $status ); ?>">
+									<?php echo esc_html( $status_label ); ?>
+								</span>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
 		</div>
 		<?php
 	}

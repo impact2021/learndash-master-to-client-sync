@@ -137,3 +137,50 @@
 	display: flex;
 	gap: 10px;
 }
+
+/* Push status */
+.ldmcs-push-status {
+	margin-top: 10px;
+	padding: 10px;
+	border-radius: 4px;
+	display: none;
+	font-size: 13px;
+}
+
+.ldmcs-push-status.success {
+	background-color: #ecf7ed;
+	border: 1px solid #46b450;
+	color: #46b450;
+}
+
+.ldmcs-push-status.error {
+	background-color: #f8d7da;
+	border: 1px solid #dc3232;
+	color: #dc3232;
+}
+
+.ldmcs-push-status.loading {
+	background-color: #f0f6fc;
+	border: 1px solid #0073aa;
+	color: #0073aa;
+}
+
+/* Client sites status indicators */
+.ldmcs-status-active {
+	background-color: #46b450;
+	color: #fff;
+}
+
+.ldmcs-status-inactive {
+	background-color: #999;
+	color: #fff;
+}
+
+/* Courses page */
+.wp-list-table .row-actions {
+	color: #ddd;
+}
+
+.wp-list-table .row-actions span {
+	display: inline-block;
+}
