@@ -283,7 +283,7 @@ class LDMCS_Sync {
 		);
 
 		// Remove filter to avoid recursion.
-		remove_action( 'save_post', array( 'LDMCS_Master', 'on_content_save' ), 10 );
+		remove_action( 'save_post', array( 'LDMCS_Master', 'on_content_save' ), 10, 3 );
 
 		$post_id = wp_insert_post( $post_data, true );
 
@@ -334,7 +334,7 @@ class LDMCS_Sync {
 		);
 
 		// Remove filter to avoid recursion.
-		remove_action( 'save_post', array( 'LDMCS_Master', 'on_content_save' ), 10 );
+		remove_action( 'save_post', array( 'LDMCS_Master', 'on_content_save' ), 10, 3 );
 
 		$result = wp_update_post( $post_data, true );
 

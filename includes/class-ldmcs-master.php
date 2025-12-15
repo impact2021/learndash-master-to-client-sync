@@ -92,11 +92,11 @@ class LDMCS_Master {
 	 */
 	private function get_content_type_from_post_type( $post_type ) {
 		$mapping = array(
-			'sfwd-courses'  => 'course',
-			'sfwd-lessons'  => 'lesson',
-			'sfwd-topic'    => 'topic',
-			'sfwd-quiz'     => 'quiz',
-			'sfwd-question' => 'question',
+			'sfwd-courses'  => 'courses',
+			'sfwd-lessons'  => 'lessons',
+			'sfwd-topic'    => 'topics',
+			'sfwd-quiz'     => 'quizzes',
+			'sfwd-question' => 'questions',
 		);
 
 		return isset( $mapping[ $post_type ] ) ? $mapping[ $post_type ] : 'unknown';
