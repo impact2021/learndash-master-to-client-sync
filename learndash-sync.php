@@ -222,7 +222,9 @@ function ld_sync_handle_push_action() {
     
     // Display results in a safe, formatted way (without exposing sensitive data)
     foreach ($results as $url => $result) {
-        $safe_url = esc_html(preg_replace('/^(https?:\/\/)/', '$1', parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST)));
+        // Extract and display only the scheme and host (hide full URL paths)
+        $parsed_url = parse_url($url);
+        $safe_url = esc_html(($parsed_url['scheme'] ?? 'https') . '://' . ($parsed_url['host'] ?? 'unknown'));
         echo '<h3>' . $safe_url . '</h3>';
         
         if (isset($result['error'])) {
@@ -565,18 +567,20 @@ function ld_sync_register_rest_routes() {
         'methods'  => 'GET',
         'callback' => function () {
             // Rate limiting based on IP address
-            // Check for real IP behind proxies/load balancers (use last IP in chain)
+            // Get client IP - use REMOTE_ADDR first as it's most reliable
+            // X-Forwarded-For can be manipulated, so only use as fallback
             $ip = 'unknown';
-            if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-                $forwarded_ips = array_map('trim', explode(',', sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR']))));
-                $ip = end($forwarded_ips); // Last IP is typically the most reliable
-            } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
+            if (!empty($_SERVER['REMOTE_ADDR'])) {
                 $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
+            } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+                // If behind proxy, get first IP (client IP) from the chain
+                $forwarded_ips = array_map('trim', explode(',', sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR']))));
+                $ip = $forwarded_ips[0];
             }
             $transient_key = 'ld_sync_test_rate_' . md5($ip);
             $request_count = get_transient($transient_key) ?: 0;
             
-            if ($request_count > LD_SYNC_RATE_LIMIT) {
+            if ($request_count >= LD_SYNC_RATE_LIMIT) {
                 return new WP_Error(
                     'rate_limit_exceeded',
                     'Too many requests. Please try again later.',
