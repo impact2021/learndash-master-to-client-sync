@@ -283,13 +283,33 @@ class LDMCS_Master {
 				)
 			);
 		} else {
+			// Build detailed error message with failure reasons
+			$error_details = array();
+			if ( isset( $results['details'] ) && ! empty( $results['details'] ) ) {
+				foreach ( $results['details'] as $site_url => $detail ) {
+					if ( ! $detail['success'] ) {
+						$error_details[] = sprintf(
+							'%s: %s',
+							esc_html( $site_url ),
+							esc_html( $detail['message'] )
+						);
+					}
+				}
+			}
+			
+			$error_message = sprintf(
+				/* translators: %s: course title */
+				__( 'Failed to push course "%s" to any client sites.', 'learndash-master-client-sync' ),
+				$course->post_title
+			);
+			
+			if ( ! empty( $error_details ) ) {
+				$error_message .= ' ' . __( 'Reasons:', 'learndash-master-client-sync' ) . ' ' . implode( '; ', $error_details );
+			}
+			
 			wp_send_json_error(
 				array(
-					'message' => sprintf(
-						/* translators: %s: course title */
-						__( 'Failed to push course "%s" to any client sites.', 'learndash-master-client-sync' ),
-						$course->post_title
-					),
+					'message' => $error_message,
 					'results' => $results,
 				)
 			);
@@ -362,13 +382,33 @@ class LDMCS_Master {
 				)
 			);
 		} else {
+			// Build detailed error message with failure reasons
+			$error_details = array();
+			if ( isset( $results['details'] ) && ! empty( $results['details'] ) ) {
+				foreach ( $results['details'] as $site_url => $detail ) {
+					if ( ! $detail['success'] ) {
+						$error_details[] = sprintf(
+							'%s: %s',
+							esc_html( $site_url ),
+							esc_html( $detail['message'] )
+						);
+					}
+				}
+			}
+			
+			$error_message = sprintf(
+				/* translators: %s: content title */
+				__( 'Failed to push "%s" to any client sites.', 'learndash-master-client-sync' ),
+				$post->post_title
+			);
+			
+			if ( ! empty( $error_details ) ) {
+				$error_message .= ' ' . __( 'Reasons:', 'learndash-master-client-sync' ) . ' ' . implode( '; ', $error_details );
+			}
+			
 			wp_send_json_error(
 				array(
-					'message' => sprintf(
-						/* translators: %s: content title */
-						__( 'Failed to push "%s" to any client sites.', 'learndash-master-client-sync' ),
-						$post->post_title
-					),
+					'message' => $error_message,
 					'results' => $results,
 				)
 			);

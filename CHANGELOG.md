@@ -5,6 +5,24 @@ All notable changes to the LearnDash Master to Client Sync plugin will be docume
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0] - 2024-12-15
+
+### Improved
+
+#### Error Reporting
+- Enhanced push failure error messages to include specific reasons for failures
+- Added detailed error information showing which client sites failed and why
+- Error messages now include per-site failure details instead of generic "failed to push" messages
+- Improved debugging capability by providing actionable error information
+
+### Technical Details
+
+#### Push Error Handling
+- Modified `handle_push_course()` to build detailed error messages with per-site failure reasons
+- Modified `handle_push_content()` to build detailed error messages with per-site failure reasons
+- Error details now include site URL and specific failure message for each failed client
+- Better user experience with more informative error messages
+
 ## [1.0.0] - 2024-12-15
 
 ### Added
@@ -159,4 +177,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[2.0]: https://github.com/impact2021/learndash-master-to-client-sync/releases/tag/v2.0
 [1.0.0]: https://github.com/impact2021/learndash-master-to-client-sync/releases/tag/v1.0.0
