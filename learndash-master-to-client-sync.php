@@ -4,7 +4,7 @@
  * Plugin URI: https://github.com/impact2021/learndash-master-to-client-sync
  * Description: Syncs LearnDash content from a master site to client sites without impacting users. Designed for IELTStestONLINE to affiliate sites synchronization.
  * Version: 2.0
- * Author: Impact 2021
+ * Author: Impact Websites
  * Author URI: https://github.com/impact2021
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html

@@ -193,8 +193,8 @@ class LDMCS_API {
 
 		if ( $api_key !== $master_api_key ) {
 			return new WP_Error(
-				'ldmcs_invalid_api_key',
-				__( 'Invalid API key.', 'learndash-master-client-sync' ),
+				'ldmcs_invalid_master_api_key',
+				__( 'Invalid master API key. The API key does not match the configured master site API key.', 'learndash-master-client-sync' ),
 				array( 'status' => 403 )
 			);
 		}
