@@ -258,6 +258,7 @@ class LDMCS_Sync {
 				return array(
 					'status'  => 'skipped',
 					'item_id' => $item['id'],
+					'post_id' => $existing_post->ID,
 					'message' => __( 'Content already exists', 'learndash-master-client-sync' ),
 				);
 			}
@@ -532,5 +533,147 @@ class LDMCS_Sync {
 
 		$body = wp_remote_retrieve_body( $response );
 		return json_decode( $body, true );
+	}
+
+	/**
+	 * Rebuild course structure metadata after syncing.
+	 * 
+	 * This translates post IDs in course structure metadata from master site IDs
+	 * to client site IDs using the UUID mapping.
+	 *
+	 * IMPORTANT: This only rebuilds course structure. User enrollments, progress,
+	 * and completion data are never touched.
+	 *
+	 * @param int   $course_id           Client site course post ID.
+	 * @param array $uuid_to_post_id_map Map of UUIDs to client post IDs.
+	 */
+	public static function rebuild_course_structure( $course_id, $uuid_to_post_id_map ) {
+		// Get the current course structure metadata.
+		$ld_course_steps = get_post_meta( $course_id, 'ld_course_steps', true );
+		
+		if ( empty( $ld_course_steps ) || ! is_array( $ld_course_steps ) ) {
+			return;
+		}
+
+		$rebuilt_steps = array();
+
+		// Process each post type in the structure (lessons, topics, quizzes).
+		foreach ( $ld_course_steps as $post_type => $items ) {
+			if ( ! is_array( $items ) ) {
+				continue;
+			}
+
+			$rebuilt_steps[ $post_type ] = array();
+
+			foreach ( $items as $key => $value ) {
+				// Handle hierarchical structure (e.g., 'h123' for lessons with topics).
+				if ( strpos( $key, 'h' ) === 0 ) {
+					// Extract the master post ID from the key.
+					$master_id_str = substr( $key, 1 );
+					
+					// Find the UUID for this master ID and map to client ID.
+					$client_id = self::find_client_id_for_master( $master_id_str, $uuid_to_post_id_map );
+					
+					if ( $client_id ) {
+						$new_key = 'h' . $client_id;
+						
+						// Process nested items (topics under lessons).
+						if ( is_array( $value ) ) {
+							$rebuilt_steps[ $post_type ][ $new_key ] = array();
+							foreach ( $value as $nested_key => $nested_value ) {
+								$nested_client_id = self::find_client_id_for_master( $nested_key, $uuid_to_post_id_map );
+								if ( $nested_client_id ) {
+									$rebuilt_steps[ $post_type ][ $new_key ][ $nested_client_id ] = $nested_value;
+								}
+							}
+						} else {
+							$rebuilt_steps[ $post_type ][ $new_key ] = $value;
+						}
+					}
+				} else {
+					// Non-hierarchical items - just map the ID.
+					$client_id = self::find_client_id_for_master( $key, $uuid_to_post_id_map );
+					if ( $client_id ) {
+						$rebuilt_steps[ $post_type ][ $client_id ] = $value;
+					}
+				}
+			}
+		}
+
+		// Update the course metadata with rebuilt structure.
+		update_post_meta( $course_id, 'ld_course_steps', $rebuilt_steps );
+
+		// Also rebuild legacy metadata for compatibility.
+		self::rebuild_legacy_course_meta( $course_id, $rebuilt_steps );
+	}
+
+	/**
+	 * Find client post ID for a master post ID using UUID mapping.
+	 *
+	 * @param string|int $master_id           Master post ID or UUID.
+	 * @param array      $uuid_to_post_id_map UUID to client post ID mapping.
+	 * @return int|false Client post ID or false if not found.
+	 */
+	private static function find_client_id_for_master( $master_id, $uuid_to_post_id_map ) {
+		static $cache = array();
+		
+		// If the master_id is already in the map (it's a UUID), return the client ID.
+		if ( isset( $uuid_to_post_id_map[ $master_id ] ) ) {
+			return $uuid_to_post_id_map[ $master_id ];
+		}
+
+		// Check cache to avoid repeated queries.
+		if ( isset( $cache[ $master_id ] ) ) {
+			return $cache[ $master_id ];
+		}
+
+		// Otherwise, try to find by _ldmcs_master_id meta.
+		$posts = get_posts(
+			array(
+				'post_type'      => array( 'sfwd-courses', 'sfwd-lessons', 'sfwd-topic', 'sfwd-quiz', 'sfwd-question' ),
+				'posts_per_page' => 1,
+				'meta_key'       => '_ldmcs_master_id',
+				'meta_value'     => $master_id,
+				'fields'         => 'ids',
+			)
+		);
+
+		$client_id = ! empty( $posts ) ? $posts[0] : false;
+		$cache[ $master_id ] = $client_id;
+		
+		return $client_id;
+	}
+
+	/**
+	 * Rebuild legacy course metadata for backward compatibility.
+	 *
+	 * @param int   $course_id      Client site course post ID.
+	 * @param array $rebuilt_steps  Rebuilt course steps structure.
+	 */
+	private static function rebuild_legacy_course_meta( $course_id, $rebuilt_steps ) {
+		// Extract lesson IDs.
+		if ( isset( $rebuilt_steps['sfwd-lessons'] ) && is_array( $rebuilt_steps['sfwd-lessons'] ) ) {
+			$lesson_ids = array();
+			foreach ( $rebuilt_steps['sfwd-lessons'] as $key => $value ) {
+				// Extract numeric ID from hierarchical key or use as-is.
+				if ( strpos( $key, 'h' ) === 0 ) {
+					$lesson_ids[] = (int) substr( $key, 1 );
+				} else {
+					$lesson_ids[] = (int) $key;
+				}
+			}
+			if ( ! empty( $lesson_ids ) ) {
+				update_post_meta( $course_id, 'course_lessons', $lesson_ids );
+			}
+		}
+
+		// Extract quiz IDs.
+		if ( isset( $rebuilt_steps['sfwd-quiz'] ) && is_array( $rebuilt_steps['sfwd-quiz'] ) ) {
+			$quiz_ids = array_keys( $rebuilt_steps['sfwd-quiz'] );
+			$quiz_ids = array_map( 'intval', $quiz_ids );
+			if ( ! empty( $quiz_ids ) ) {
+				update_post_meta( $course_id, 'course_quiz', $quiz_ids );
+			}
+		}
 	}
 }

@@ -463,6 +463,10 @@ class LDMCS_API {
 			'details' => array(),
 		);
 
+		// Track UUID to client post ID mapping for rebuilding course structure.
+		$uuid_to_post_id_map = array();
+		$course_ids = array();
+
 		// Process each content item.
 		foreach ( $content['items'] as $item ) {
 			if ( ! isset( $item['type'] ) || ! isset( $item['data'] ) ) {
@@ -473,6 +477,7 @@ class LDMCS_API {
 			// Pass 'master_push' as sync type since this content was pushed from master
 			$sync_result = LDMCS_Sync::sync_single_item( $item['data'], $item['type'], 'master_push' );
 
+			// Update result counters.
 			if ( 'success' === $sync_result['status'] ) {
 				$results['synced']++;
 			} elseif ( 'skipped' === $sync_result['status'] ) {
@@ -481,7 +486,24 @@ class LDMCS_API {
 				$results['errors']++;
 			}
 
+			// Track the mapping for structure rebuild (for both success and skipped).
+			if ( isset( $sync_result['post_id'] ) && isset( $item['data']['id'] ) ) {
+				$uuid_to_post_id_map[ $item['data']['id'] ] = $sync_result['post_id'];
+				
+				// Track course IDs for structure rebuild.
+				if ( 'courses' === $item['type'] ) {
+					$course_ids[] = $sync_result['post_id'];
+				}
+			}
+
 			$results['details'][] = $sync_result;
+		}
+
+		// Rebuild course structure metadata with client post IDs.
+		if ( ! empty( $course_ids ) && ! empty( $uuid_to_post_id_map ) ) {
+			foreach ( $course_ids as $course_id ) {
+				LDMCS_Sync::rebuild_course_structure( $course_id, $uuid_to_post_id_map );
+			}
 		}
 
 		return new WP_REST_Response( $results );
