@@ -465,15 +465,23 @@ class LDMCS_Master {
 			$related_content = $this->get_related_course_content( $post_id );
 			$items = array_merge( $items, $related_content );
 			
+			// Get UUID for logging
+			$uuid = get_post_meta( $post_id, LDMCS_Sync::UUID_META_KEY, true );
+			$log_id = ! empty( $uuid ) ? $uuid : $post_id;
+			
 			// Log how many related items were found.
 			LDMCS_Logger::log(
 				'master_push',
 				$content_type,
-				$post_id,
+				$log_id,
 				'info',
 				sprintf( 'Found %d related content items for course "%s"', count( $related_content ), $post->post_title )
 			);
 		}
+
+		// Get UUID for logging
+		$uuid = get_post_meta( $post_id, LDMCS_Sync::UUID_META_KEY, true );
+		$log_id = ! empty( $uuid ) ? $uuid : $post_id;
 
 		// Push to each client site.
 		foreach ( $client_sites as $client_id => $client_data ) {
@@ -491,7 +499,7 @@ class LDMCS_Master {
 				LDMCS_Logger::log(
 					'master_push',
 					$content_type,
-					$post_id,
+					$log_id,
 					'error',
 					sprintf( 'Failed to push to %s: %s', $site_url, $push_result->get_error_message() )
 				);
@@ -503,12 +511,23 @@ class LDMCS_Master {
 					'data'    => $push_result,
 				);
 
+				// Log success with sync statistics
+				$sync_stats = '';
+				if ( isset( $push_result['synced'] ) || isset( $push_result['skipped'] ) || isset( $push_result['errors'] ) ) {
+					$sync_stats = sprintf(
+						' | Synced: %d | Skipped: %d | Errors: %d',
+						isset( $push_result['synced'] ) ? $push_result['synced'] : 0,
+						isset( $push_result['skipped'] ) ? $push_result['skipped'] : 0,
+						isset( $push_result['errors'] ) ? $push_result['errors'] : 0
+					);
+				}
+
 				LDMCS_Logger::log(
 					'master_push',
 					$content_type,
-					$post_id,
+					$log_id,
 					'success',
-					sprintf( 'Successfully pushed to %s', $site_url )
+					sprintf( 'Successfully pushed to %s%s', $site_url, $sync_stats )
 				);
 			}
 		}

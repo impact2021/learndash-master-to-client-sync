@@ -470,7 +470,8 @@ class LDMCS_API {
 				continue;
 			}
 
-			$sync_result = LDMCS_Sync::sync_single_item( $item['data'], $item['type'] );
+			// Pass 'master_push' as sync type since this content was pushed from master
+			$sync_result = LDMCS_Sync::sync_single_item( $item['data'], $item['type'], 'master_push' );
 
 			if ( 'success' === $sync_result['status'] ) {
 				$results['synced']++;

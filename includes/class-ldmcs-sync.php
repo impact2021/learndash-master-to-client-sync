@@ -238,10 +238,14 @@ class LDMCS_Sync {
 	 *
 	 * @param array  $item         Content item data.
 	 * @param string $content_type Content type.
+	 * @param string $sync_type    Sync type ('client_pull' or 'master_push'). Default 'client_pull'.
 	 * @return array Sync result.
 	 */
-	public static function sync_single_item( $item, $content_type ) {
+	public static function sync_single_item( $item, $content_type, $sync_type = 'client_pull' ) {
 		$post_type = self::get_post_type_from_content_type( $content_type );
+
+		// Use UUID as log content ID (item['id'] is the UUID from master)
+		$log_content_id = isset( $item['id'] ) ? $item['id'] : 0;
 
 		// Check if content already exists.
 		$existing_post = self::find_existing_post( $item['id'], $item['slug'], $post_type );
@@ -250,7 +254,7 @@ class LDMCS_Sync {
 			$conflict_resolution = get_option( 'ldmcs_conflict_resolution', 'skip' );
 
 			if ( 'skip' === $conflict_resolution ) {
-				LDMCS_Logger::log( 'client_pull', $content_type, $existing_post->ID, 'skipped', 'Content already exists' );
+				LDMCS_Logger::log( $sync_type, $content_type, $log_content_id, 'skipped', 'Content already exists' );
 				return array(
 					'status'  => 'skipped',
 					'item_id' => $item['id'],
@@ -263,7 +267,7 @@ class LDMCS_Sync {
 			$status = $result ? 'success' : 'error';
 			$message = $result ? __( 'Content updated', 'learndash-master-client-sync' ) : __( 'Failed to update content', 'learndash-master-client-sync' );
 
-			LDMCS_Logger::log( 'client_pull', $content_type, $existing_post->ID, $status, $message );
+			LDMCS_Logger::log( $sync_type, $content_type, $log_content_id, $status, $message );
 
 			return array(
 				'status'  => $status,
@@ -277,7 +281,7 @@ class LDMCS_Sync {
 		$post_id = self::create_content( $item, $post_type );
 
 		if ( is_wp_error( $post_id ) ) {
-			LDMCS_Logger::log( 'client_pull', $content_type, 0, 'error', $post_id->get_error_message() );
+			LDMCS_Logger::log( $sync_type, $content_type, $log_content_id, 'error', $post_id->get_error_message() );
 			return array(
 				'status'  => 'error',
 				'item_id' => $item['id'],
@@ -285,7 +289,7 @@ class LDMCS_Sync {
 			);
 		}
 
-		LDMCS_Logger::log( 'client_pull', $content_type, $post_id, 'success', 'Content created' );
+		LDMCS_Logger::log( $sync_type, $content_type, $log_content_id, 'success', 'Content created' );
 
 		return array(
 			'status'  => 'success',
