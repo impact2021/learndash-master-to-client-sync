@@ -498,6 +498,20 @@
 	}
 
 	// Initialize on document ready
-	$(document).ready(init);
+	$(document).ready(function() {
+		console.log('LearnDash Master to Client Sync admin.js loaded');
+		console.log('ldmcsAdmin object:', typeof ldmcsAdmin !== 'undefined' ? 'available' : 'NOT FOUND');
+		
+		// Check if modal exists on page load
+		setTimeout(function() {
+			var modalExists = $('#ldmcs-push-modal').length > 0;
+			console.log('Modal element check:', modalExists ? 'FOUND' : 'NOT FOUND');
+			if (!modalExists) {
+				console.warn('Warning: Push modal #ldmcs-push-modal not found in DOM. Push buttons will show an error.');
+			}
+		}, 100);
+		
+		init();
+	});
 
 })(jQuery);
