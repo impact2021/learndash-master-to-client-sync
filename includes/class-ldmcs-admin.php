@@ -587,7 +587,7 @@ class LDMCS_Admin {
 	 * @return string UUID or post ID as fallback.
 	 */
 	private function get_display_uuid( $post_id ) {
-		$uuid = get_post_meta( $post_id, 'ld_uuid', true );
+		$uuid = get_post_meta( $post_id, LDMCS_Sync::UUID_META_KEY, true );
 		return ! empty( $uuid ) ? $uuid : $post_id;
 	}
 
@@ -645,14 +645,6 @@ class LDMCS_Admin {
 	 * @return string|false Content type or false if not a LearnDash type.
 	 */
 	private function get_content_type_from_post_type( $post_type ) {
-		$mapping = array(
-			'sfwd-courses'  => 'courses',
-			'sfwd-lessons'  => 'lessons',
-			'sfwd-topic'    => 'topics',
-			'sfwd-quiz'     => 'quizzes',
-			'sfwd-question' => 'questions',
-		);
-
-		return isset( $mapping[ $post_type ] ) ? $mapping[ $post_type ] : false;
+		return LDMCS_Sync::get_content_type_from_post_type( $post_type );
 	}
 }

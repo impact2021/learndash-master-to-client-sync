@@ -306,8 +306,8 @@ class LDMCS_API {
 	 * @return array
 	 */
 	private function prepare_content_item( $post, $content_type ) {
-		// Use ld_uuid as the ID if available, otherwise fall back to post ID.
-		$uuid = get_post_meta( $post->ID, 'ld_uuid', true );
+		// Use UUID as the ID if available, otherwise fall back to post ID.
+		$uuid = get_post_meta( $post->ID, LDMCS_Sync::UUID_META_KEY, true );
 		$master_id = ! empty( $uuid ) ? $uuid : $post->ID;
 
 		$item = array(
@@ -342,18 +342,8 @@ class LDMCS_API {
 		// Get all post meta.
 		$all_meta = get_post_meta( $post_id );
 
-		// Exclude user-related and progress data meta keys.
-		$excluded_patterns = array(
-			'_sfwd-quizzes', // User quiz attempts
-			'_quiz_',        // Quiz user data
-			'_user_',        // User-specific data
-			'learndash_user_activity', // User activity
-			'course_completed', // User completion data
-			'completed_', // Any completion data
-			'_progress_', // Progress data
-			'_ldmcs_master_id', // Don't copy sync meta
-			'_ldmcs_last_sync', // Don't copy sync meta
-		);
+		// Use shared unsafe patterns from sync class.
+		$excluded_patterns = LDMCS_Sync::get_unsafe_meta_patterns();
 
 		// Filter LearnDash specific meta keys but exclude user data.
 		foreach ( $all_meta as $key => $value ) {

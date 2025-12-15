@@ -36,6 +36,43 @@ if ( ! defined( 'ABSPATH' ) ) {
 class LDMCS_Sync {
 
 	/**
+	 * UUID meta key.
+	 */
+	const UUID_META_KEY = 'ld_uuid';
+
+	/**
+	 * Post type to content type mapping.
+	 *
+	 * @var array
+	 */
+	private static $post_type_mapping = array(
+		'courses'   => 'sfwd-courses',
+		'lessons'   => 'sfwd-lessons',
+		'topics'    => 'sfwd-topic',
+		'quizzes'   => 'sfwd-quiz',
+		'questions' => 'sfwd-question',
+	);
+
+	/**
+	 * Unsafe meta key patterns that should never be synced (user data).
+	 *
+	 * @var array
+	 */
+	private static $unsafe_meta_patterns = array(
+		'_sfwd-quizzes',           // User quiz attempts
+		'_quiz_',                  // Quiz user data
+		'_user_',                  // User-specific data
+		'learndash_user_activity', // User activity
+		'course_completed',        // User completion data
+		'completed_',              // Any completion data
+		'_progress_',              // Progress data
+		'_enrolled_',              // Enrollment data
+		'_access_',                // Access data
+		'_ldmcs_master_id',        // Don't sync our own tracking meta
+		'_ldmcs_last_sync',        // Don't sync our own tracking meta
+	);
+
+	/**
 	 * Sync content from master to client.
 	 *
 	 * @param array $content_types Content types to sync.
@@ -409,22 +446,7 @@ class LDMCS_Sync {
 	 * @return bool True if safe to sync, false otherwise.
 	 */
 	private static function is_safe_meta_key( $meta_key ) {
-		// Patterns that indicate user-related data that should NEVER be synced.
-		$unsafe_patterns = array(
-			'_sfwd-quizzes',           // User quiz attempts
-			'_quiz_',                  // Quiz user data
-			'_user_',                  // User-specific data
-			'learndash_user_activity', // User activity
-			'course_completed',        // User completion data
-			'completed_',              // Any completion data
-			'_progress_',              // Progress data
-			'_enrolled_',              // Enrollment data
-			'_access_',                // Access data
-			'_ldmcs_master_id',        // Don't sync our own tracking meta
-			'_ldmcs_last_sync',        // Don't sync our own tracking meta
-		);
-
-		foreach ( $unsafe_patterns as $pattern ) {
+		foreach ( self::$unsafe_meta_patterns as $pattern ) {
 			if ( strpos( $meta_key, $pattern ) !== false ) {
 				return false;
 			}
@@ -434,21 +456,33 @@ class LDMCS_Sync {
 	}
 
 	/**
+	 * Get unsafe meta patterns.
+	 *
+	 * @return array Unsafe patterns.
+	 */
+	public static function get_unsafe_meta_patterns() {
+		return self::$unsafe_meta_patterns;
+	}
+
+	/**
 	 * Get post type from content type.
 	 *
 	 * @param string $content_type Content type.
 	 * @return string
 	 */
 	private static function get_post_type_from_content_type( $content_type ) {
-		$mapping = array(
-			'courses'   => 'sfwd-courses',
-			'lessons'   => 'sfwd-lessons',
-			'topics'    => 'sfwd-topic',
-			'quizzes'   => 'sfwd-quiz',
-			'questions' => 'sfwd-question',
-		);
+		return isset( self::$post_type_mapping[ $content_type ] ) ? self::$post_type_mapping[ $content_type ] : '';
+	}
 
-		return isset( $mapping[ $content_type ] ) ? $mapping[ $content_type ] : '';
+	/**
+	 * Get content type from post type.
+	 *
+	 * @param string $post_type Post type.
+	 * @return string|false Content type or false.
+	 */
+	public static function get_content_type_from_post_type( $post_type ) {
+		$reversed = array_flip( self::$post_type_mapping );
+		return isset( $reversed[ $post_type ] ) ? $reversed[ $post_type ] : false;
 	}
 
 	/**

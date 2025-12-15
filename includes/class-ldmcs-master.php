@@ -117,11 +117,11 @@ class LDMCS_Master {
 	 * @return string UUID.
 	 */
 	private function ensure_uuid( $post_id ) {
-		$uuid = get_post_meta( $post_id, 'ld_uuid', true );
+		$uuid = get_post_meta( $post_id, LDMCS_Sync::UUID_META_KEY, true );
 		
 		if ( empty( $uuid ) ) {
 			$uuid = wp_generate_uuid4();
-			update_post_meta( $post_id, 'ld_uuid', $uuid );
+			update_post_meta( $post_id, LDMCS_Sync::UUID_META_KEY, $uuid );
 		}
 		
 		return $uuid;
@@ -154,7 +154,7 @@ class LDMCS_Master {
 			$type_skipped = 0;
 
 			foreach ( $posts as $post ) {
-				$existing_uuid = get_post_meta( $post->ID, 'ld_uuid', true );
+				$existing_uuid = get_post_meta( $post->ID, LDMCS_Sync::UUID_META_KEY, true );
 				
 				if ( empty( $existing_uuid ) ) {
 					$this->ensure_uuid( $post->ID );
@@ -580,18 +580,8 @@ class LDMCS_Master {
 		// Get all post meta.
 		$all_meta = get_post_meta( $post_id );
 
-		// Exclude user-related and progress data meta keys.
-		$excluded_patterns = array(
-			'_sfwd-quizzes', // User quiz attempts
-			'_quiz_',        // Quiz user data
-			'_user_',        // User-specific data
-			'learndash_user_activity', // User activity
-			'course_completed', // User completion data
-			'completed_', // Any completion data
-			'_progress_', // Progress data
-			'_ldmcs_master_id', // Don't copy sync meta
-			'_ldmcs_last_sync', // Don't copy sync meta
-		);
+		// Use shared unsafe patterns from sync class.
+		$excluded_patterns = LDMCS_Sync::get_unsafe_meta_patterns();
 
 		// Filter LearnDash specific meta keys but exclude user data.
 		foreach ( $all_meta as $key => $value ) {

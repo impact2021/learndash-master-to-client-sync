@@ -239,25 +239,46 @@
 			},
 			success: function(response) {
 				if (response.success) {
-					var message = response.data.message;
+					var message = $('<div>').text(response.data.message).html();
 					if (response.data.results && response.data.results.details) {
-						message += '<div class="ldmcs-uuid-results"><table>';
-						message += '<thead><tr><th>Content Type</th><th>Updated</th><th>Already Had UUID</th><th>Total</th></tr></thead>';
-						message += '<tbody>';
+						var $table = $('<table>').addClass('ldmcs-uuid-results-table');
+						var $thead = $('<thead>').append(
+							$('<tr>').append(
+								$('<th>').text('Content Type'),
+								$('<th>').text('Updated'),
+								$('<th>').text('Already Had UUID'),
+								$('<th>').text('Total')
+							)
+						);
+						var $tbody = $('<tbody>');
+						
 						for (var type in response.data.results.details) {
-							var detail = response.data.results.details[type];
-							message += '<tr>';
-							message += '<td>' + type + '</td>';
-							message += '<td>' + detail.updated + '</td>';
-							message += '<td>' + detail.skipped + '</td>';
-							message += '<td>' + detail.total + '</td>';
-							message += '</tr>';
+							if (response.data.results.details.hasOwnProperty(type)) {
+								var detail = response.data.results.details[type];
+								$tbody.append(
+									$('<tr>').append(
+										$('<td>').text(type),
+										$('<td>').text(detail.updated),
+										$('<td>').text(detail.skipped),
+										$('<td>').text(detail.total)
+									)
+								);
+							}
 						}
-						message += '</tbody></table></div>';
+						
+						$table.append($thead, $tbody);
+						message += '<div class="ldmcs-uuid-results"></div>';
+						showStatus($status, 'success', message);
+						$status.find('.ldmcs-uuid-results').append($table);
+					} else {
+						showStatus($status, 'success', message);
 					}
-					showStatus($status, 'success', message);
 				} else {
-					showStatus($status, 'error', ldmcsAdmin.strings.uuidsError + '<br>' + (response.data.message || ''));
+					var errorMsg = ldmcsAdmin.strings.uuidsError;
+					if (response.data && response.data.message) {
+						errorMsg += '<br>' + $('<div>').text(response.data.message).html();
+					}
+					showStatus($status, 'error', errorMsg);
 				}
 			},
 			error: function() {
