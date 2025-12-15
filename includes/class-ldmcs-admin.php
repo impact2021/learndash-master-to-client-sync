@@ -410,10 +410,7 @@ class LDMCS_Admin {
 					<tbody>
 						<?php foreach ( $courses as $course ) : ?>
 						<tr>
-							<td><strong><?php 
-								$uuid = get_post_meta( $course->ID, 'ld_uuid', true );
-								echo esc_html( ! empty( $uuid ) ? $uuid : $course->ID );
-							?></strong></td>
+							<td><strong><?php echo esc_html( $this->get_display_uuid( $course->ID ) ); ?></strong></td>
 							<td>
 								<strong><?php echo esc_html( $course->post_title ); ?></strong>
 								<div class="row-actions">
@@ -547,6 +544,17 @@ class LDMCS_Admin {
 	}
 
 	/**
+	 * Get UUID for display.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string UUID or post ID as fallback.
+	 */
+	private function get_display_uuid( $post_id ) {
+		$uuid = get_post_meta( $post_id, 'ld_uuid', true );
+		return ! empty( $uuid ) ? $uuid : $post_id;
+	}
+
+	/**
 	 * Render UUID column content.
 	 *
 	 * @param string $column  Column name.
@@ -561,9 +569,7 @@ class LDMCS_Admin {
 
 		if ( 'master' === $mode ) {
 			// On master site, show the ld_uuid custom field if available, otherwise show post ID.
-			$uuid = get_post_meta( $post_id, 'ld_uuid', true );
-			$display_value = ! empty( $uuid ) ? $uuid : $post_id;
-			echo '<strong>' . esc_html( $display_value ) . '</strong>';
+			echo '<strong>' . esc_html( $this->get_display_uuid( $post_id ) ) . '</strong>';
 		} else {
 			// On client site, show both local ID and master UUID.
 			$master_id = get_post_meta( $post_id, '_ldmcs_master_id', true );
