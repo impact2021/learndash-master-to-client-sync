@@ -410,7 +410,10 @@ class LDMCS_Admin {
 					<tbody>
 						<?php foreach ( $courses as $course ) : ?>
 						<tr>
-							<td><strong><?php echo esc_html( $course->ID ); ?></strong></td>
+							<td><strong><?php 
+								$uuid = get_post_meta( $course->ID, 'ld_uuid', true );
+								echo esc_html( ! empty( $uuid ) ? $uuid : $course->ID );
+							?></strong></td>
 							<td>
 								<strong><?php echo esc_html( $course->post_title ); ?></strong>
 								<div class="row-actions">
@@ -557,8 +560,10 @@ class LDMCS_Admin {
 		$mode = get_option( 'ldmcs_mode', 'client' );
 
 		if ( 'master' === $mode ) {
-			// On master site, show the local post ID as the master UUID.
-			echo '<strong>' . esc_html( $post_id ) . '</strong>';
+			// On master site, show the ld_uuid custom field if available, otherwise show post ID.
+			$uuid = get_post_meta( $post_id, 'ld_uuid', true );
+			$display_value = ! empty( $uuid ) ? $uuid : $post_id;
+			echo '<strong>' . esc_html( $display_value ) . '</strong>';
 		} else {
 			// On client site, show both local ID and master UUID.
 			$master_id = get_post_meta( $post_id, '_ldmcs_master_id', true );
