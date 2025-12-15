@@ -5,6 +5,42 @@ All notable changes to the LearnDash Master to Client Sync plugin will be docume
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2024-12-15
+
+### Fixed
+
+#### Critical API Key Authentication Bug
+- **Fixed:** Push operations from master to client sites were failing with "Invalid API key" error even after successful connection verification
+- **Root Cause:** The `/receive` endpoint on client sites was incorrectly checking the received API key against the client's own API key instead of the master's API key
+- **Solution:** Created new `check_master_api_key()` method that validates against `ldmcs_master_api_key` (the master's API key stored by the client)
+- The `/receive` endpoint now uses `check_master_api_key()` instead of `check_api_key()` for proper authentication
+- This fixes the issue where verified connections would still fail during push operations
+
+#### Security Improvements
+- Added `esc_html()` escaping for post titles in error messages to prevent potential XSS vulnerabilities
+- Properly sanitized all user-facing content in error reporting
+
+### Improved
+
+#### Error Reporting
+- Enhanced push failure error messages to include specific reasons for failures
+- Added detailed error information showing which client sites failed and why
+- Error messages now include per-site failure details instead of generic "failed to push" messages
+- Improved debugging capability by providing actionable error information
+
+### Technical Details
+
+#### API Authentication Flow
+- **Master site endpoints** (GET /content, GET /verify): Use `check_api_key()` to validate against master's own API key
+- **Client site endpoint** (POST /receive): Now uses `check_master_api_key()` to validate against the master's API key that the client has stored
+- This ensures proper bidirectional authentication between master and client sites
+
+#### Push Error Handling
+- Modified `handle_push_course()` to build detailed error messages with per-site failure reasons
+- Modified `handle_push_content()` to build detailed error messages with per-site failure reasons
+- Error details now include site URL and specific failure message for each failed client
+- Better user experience with more informative error messages
+
 ## [1.0.0] - 2024-12-15
 
 ### Added
@@ -159,4 +195,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[2.0.0]: https://github.com/impact2021/learndash-master-to-client-sync/releases/tag/v2.0.0
 [1.0.0]: https://github.com/impact2021/learndash-master-to-client-sync/releases/tag/v1.0.0
