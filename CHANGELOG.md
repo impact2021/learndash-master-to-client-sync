@@ -21,7 +21,7 @@ All notable changes to the LearnDash Master-Client Sync plugin will be documente
 - Organized code structure with clear section headers
 
 ### Improved
-- **Security**: Enhanced nonce verification on all forms
+- **Security**: Enhanced nonce verification on all forms and added rate limiting on test endpoint
 - **UI/UX**: Better form layouts with descriptions and proper labels
 - **Code Organization**: Clear separation of concerns with descriptive function names
 - **Documentation**: Complete user and developer guides

@@ -150,8 +150,9 @@ wp_mail($admin_email, $subject, $message);
 1. **Nonce verification** on all forms
 2. **Capability checks** (`manage_options` required)
 3. **Input sanitization** using WordPress functions
-4. **Secret key authentication** for REST API
-5. **HTML sanitization** using `wp_kses_post()` for content
+4. **Secret key authentication** for REST API receive endpoint
+5. **Rate limiting** on test endpoint (10 requests per minute per IP)
+6. **HTML sanitization** using `wp_kses_post()` for content
 
 ### Best Practices
 - Always use WordPress sanitization functions

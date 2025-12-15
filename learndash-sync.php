@@ -518,17 +518,32 @@ function ld_sync_receive_page() {
 add_action('rest_api_init', 'ld_sync_register_rest_routes');
 
 function ld_sync_register_rest_routes() {
-    // Receive endpoint
+    // Receive endpoint - publicly accessible but requires valid SECRET_KEY1 in request body
     register_rest_route('ld-sync/v1', '/receive', [
         'methods'  => 'POST',
         'callback' => 'ld_sync_receive_callback',
-        'permission_callback' => '__return_true',
+        'permission_callback' => '__return_true', // Authentication via secret key in callback
     ]);
 
-    // Test endpoint
+    // Test endpoint (with rate limiting via transient)
     register_rest_route('ld-sync/v1', '/test', [
         'methods'  => 'GET',
         'callback' => function () {
+            // Simple rate limiting: max 10 requests per minute per IP
+            $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            $transient_key = 'ld_sync_test_rate_' . md5($ip);
+            $request_count = get_transient($transient_key) ?: 0;
+            
+            if ($request_count > 10) {
+                return new WP_Error(
+                    'rate_limit_exceeded',
+                    'Too many requests. Please try again later.',
+                    ['status' => 429]
+                );
+            }
+            
+            set_transient($transient_key, $request_count + 1, 60);
+            
             return [
                 'status' => 'success',
                 'message' => 'LearnDash Sync REST API is working',
