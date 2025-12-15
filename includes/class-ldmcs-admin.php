@@ -165,6 +165,8 @@ class LDMCS_Admin {
 				'manualSyncNonce'       => wp_create_nonce( 'ldmcs_manual_sync' ),
 				'verifyConnectionNonce' => wp_create_nonce( 'ldmcs_verify_connection' ),
 				'pushCourseNonce'       => wp_create_nonce( 'ldmcs_push_course' ),
+				'pushContentNonce'      => wp_create_nonce( 'ldmcs_push_content' ),
+				'generateUuidsNonce'    => wp_create_nonce( 'ldmcs_generate_uuids' ),
 				'strings'               => array(
 					'syncing'             => __( 'Syncing...', 'learndash-master-client-sync' ),
 					'syncComplete'        => __( 'Sync completed!', 'learndash-master-client-sync' ),
@@ -172,10 +174,14 @@ class LDMCS_Admin {
 					'verifying'           => __( 'Verifying connection...', 'learndash-master-client-sync' ),
 					'connectionVerified'  => __( 'Connection verified successfully!', 'learndash-master-client-sync' ),
 					'connectionFailed'    => __( 'Connection failed. Please check your settings.', 'learndash-master-client-sync' ),
-					'pushing'             => __( 'Pushing course...', 'learndash-master-client-sync' ),
-					'pushComplete'        => __( 'Course pushed successfully!', 'learndash-master-client-sync' ),
-					'pushError'           => __( 'Failed to push course.', 'learndash-master-client-sync' ),
-					'confirmPush'         => __( 'Push this course to all connected client sites?', 'learndash-master-client-sync' ),
+					'pushing'             => __( 'Pushing content...', 'learndash-master-client-sync' ),
+					'pushComplete'        => __( 'Content pushed successfully!', 'learndash-master-client-sync' ),
+					'pushError'           => __( 'Failed to push content.', 'learndash-master-client-sync' ),
+					'confirmPush'         => __( 'Push this content to all connected client sites?', 'learndash-master-client-sync' ),
+					'generatingUuids'     => __( 'Generating UUIDs...', 'learndash-master-client-sync' ),
+					'uuidsGenerated'      => __( 'UUIDs generated successfully!', 'learndash-master-client-sync' ),
+					'uuidsError'          => __( 'Failed to generate UUIDs.', 'learndash-master-client-sync' ),
+					'confirmGenerateUuids' => __( 'This will generate unique UUIDs for all LearnDash content that doesn\'t have one. This is required for accurate content mapping. Continue?', 'learndash-master-client-sync' ),
 				),
 			)
 		);
@@ -189,6 +195,15 @@ class LDMCS_Admin {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'LearnDash Master to Client Sync Settings', 'learndash-master-client-sync' ); ?></h1>
+
+			<?php if ( 'master' === $mode ) : ?>
+			<div class="notice notice-success">
+				<p>
+					<strong><?php esc_html_e( '✓ User Data Protection:', 'learndash-master-client-sync' ); ?></strong>
+					<?php esc_html_e( 'This plugin syncs ONLY course structure and content. User enrollments, progress, quiz attempts, course completions, and all user data remain completely untouched and safe on all sites.', 'learndash-master-client-sync' ); ?>
+				</p>
+			</div>
+			<?php endif; ?>
 
 			<form method="post" action="options.php">
 				<?php
@@ -218,6 +233,17 @@ class LDMCS_Admin {
 							<input type="text" name="ldmcs_api_key" id="ldmcs_api_key" value="<?php echo esc_attr( get_option( 'ldmcs_api_key' ) ); ?>" class="regular-text" readonly />
 							<button type="button" class="button" id="ldmcs-regenerate-key"><?php esc_html_e( 'Regenerate', 'learndash-master-client-sync' ); ?></button>
 							<p class="description"><?php esc_html_e( 'This API key is used by client sites to authenticate. Keep it secure.', 'learndash-master-client-sync' ); ?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Content Mapping', 'learndash-master-client-sync' ); ?></th>
+						<td>
+							<button type="button" class="button button-secondary" id="ldmcs-generate-uuids"><?php esc_html_e( 'Generate UUIDs for All Content', 'learndash-master-client-sync' ); ?></button>
+							<p class="description">
+								<?php esc_html_e( 'Generate unique identifiers (UUIDs) for all LearnDash content (Courses, Lessons, Topics, Quizzes, Questions). This ensures accurate mapping between master and client sites. Run this once before pushing content.', 'learndash-master-client-sync' ); ?>
+							</p>
+							<div id="ldmcs-generate-uuids-status"></div>
 						</td>
 					</tr>
 					<?php endif; ?>
@@ -388,6 +414,12 @@ class LDMCS_Admin {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'LearnDash Courses', 'learndash-master-client-sync' ); ?></h1>
+			<div class="notice notice-info">
+				<p>
+					<strong><?php esc_html_e( 'Safe Content Sync:', 'learndash-master-client-sync' ); ?></strong>
+					<?php esc_html_e( 'Pushing courses only syncs course content and structure. User enrollments, progress, quiz attempts, and completion data are NEVER affected or overwritten. Users on client sites can continue their learning without interruption.', 'learndash-master-client-sync' ); ?>
+				</p>
+			</div>
 			<p class="description">
 				<?php esc_html_e( 'Push individual courses to connected client sites. The Master UUID is the unique identifier for each course on this master site.', 'learndash-master-client-sync' ); ?>
 			</p>
@@ -540,6 +572,11 @@ class LDMCS_Admin {
 			}
 		}
 
+		// Add push action column for master sites.
+		if ( 'master' === $mode ) {
+			$new_columns['ldmcs_push'] = __( 'Push to Clients', 'learndash-master-client-sync' );
+		}
+
 		return $new_columns;
 	}
 
@@ -561,28 +598,61 @@ class LDMCS_Admin {
 	 * @param int    $post_id Post ID.
 	 */
 	public function render_uuid_column( $column, $post_id ) {
-		if ( 'ldmcs_uuid' !== $column ) {
-			return;
-		}
-
 		$mode = get_option( 'ldmcs_mode', 'client' );
 
-		if ( 'master' === $mode ) {
-			// On master site, show the ld_uuid custom field if available, otherwise show post ID.
-			echo '<strong>' . esc_html( $this->get_display_uuid( $post_id ) ) . '</strong>';
-		} else {
-			// On client site, show both local ID and master UUID.
-			$master_id = get_post_meta( $post_id, '_ldmcs_master_id', true );
-			
-			echo '<div class="ldmcs-uuid-info">';
-			echo '<div><strong>' . esc_html__( 'Local:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $post_id ) . '</div>';
-			
-			if ( $master_id ) {
-				echo '<div><strong>' . esc_html__( 'Master:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $master_id ) . '</div>';
+		if ( 'ldmcs_uuid' === $column ) {
+			if ( 'master' === $mode ) {
+				// On master site, show the ld_uuid custom field if available, otherwise show post ID.
+				echo '<strong>' . esc_html( $this->get_display_uuid( $post_id ) ) . '</strong>';
 			} else {
-				echo '<div class="ldmcs-no-master-id"><em>' . esc_html__( 'Not synced', 'learndash-master-client-sync' ) . '</em></div>';
+				// On client site, show both local ID and master UUID.
+				$master_id = get_post_meta( $post_id, '_ldmcs_master_id', true );
+				
+				echo '<div class="ldmcs-uuid-info">';
+				echo '<div><strong>' . esc_html__( 'Local:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $post_id ) . '</div>';
+				
+				if ( $master_id ) {
+					echo '<div><strong>' . esc_html__( 'Master:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $master_id ) . '</div>';
+				} else {
+					echo '<div class="ldmcs-no-master-id"><em>' . esc_html__( 'Not synced', 'learndash-master-client-sync' ) . '</em></div>';
+				}
+				echo '</div>';
 			}
-			echo '</div>';
+		} elseif ( 'ldmcs_push' === $column && 'master' === $mode ) {
+			// Push button for master site.
+			$post = get_post( $post_id );
+			$content_type = $this->get_content_type_from_post_type( $post->post_type );
+			
+			if ( $content_type ) {
+				?>
+				<button type="button" 
+					class="button button-small ldmcs-push-content" 
+					data-content-id="<?php echo esc_attr( $post_id ); ?>" 
+					data-content-type="<?php echo esc_attr( $content_type ); ?>"
+					data-content-title="<?php echo esc_attr( $post->post_title ); ?>">
+					<?php esc_html_e( 'Push', 'learndash-master-client-sync' ); ?>
+				</button>
+				<div class="ldmcs-push-status" id="ldmcs-push-status-<?php echo esc_attr( $content_type ); ?>-<?php echo esc_attr( $post_id ); ?>"></div>
+				<?php
+			}
 		}
+	}
+
+	/**
+	 * Get content type from post type.
+	 *
+	 * @param string $post_type Post type.
+	 * @return string|false Content type or false if not a LearnDash type.
+	 */
+	private function get_content_type_from_post_type( $post_type ) {
+		$mapping = array(
+			'sfwd-courses'  => 'courses',
+			'sfwd-lessons'  => 'lessons',
+			'sfwd-topic'    => 'topics',
+			'sfwd-quiz'     => 'quizzes',
+			'sfwd-question' => 'questions',
+		);
+
+		return isset( $mapping[ $post_type ] ) ? $mapping[ $post_type ] : false;
 	}
 }
