@@ -295,8 +295,12 @@ class LDMCS_API {
 	 * @return array
 	 */
 	private function prepare_content_item( $post, $content_type ) {
+		// Use ld_uuid as the ID if available, otherwise fall back to post ID.
+		$uuid = get_post_meta( $post->ID, 'ld_uuid', true );
+		$master_id = ! empty( $uuid ) ? $uuid : $post->ID;
+
 		$item = array(
-			'id'              => $post->ID,
+			'id'              => $master_id,
 			'title'           => $post->post_title,
 			'content'         => $post->post_content,
 			'excerpt'         => $post->post_excerpt,
