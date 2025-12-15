@@ -511,8 +511,9 @@
 		$body.html(html);
 	}
 
-	// Debug mode - set to false to disable console logging in production
-	var DEBUG_MODE = true;
+	// Debug mode - set to true to enable console logging for debugging
+	// In production, this should be false to avoid console noise
+	var DEBUG_MODE = false;
 	
 	// Modal check delay to allow DOM to fully render
 	var MODAL_CHECK_DELAY = 100;
@@ -540,7 +541,8 @@
 	}
 
 	/**
-	 * Debug error helper - always logs errors.
+	 * Debug error helper - always logs errors regardless of DEBUG_MODE.
+	 * Errors should always be visible to help diagnose issues in production.
 	 *
 	 * @param {...*} args Arguments to log.
 	 */

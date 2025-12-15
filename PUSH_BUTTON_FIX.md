@@ -30,32 +30,48 @@ $(document).on('click', '.ldmcs-push-content', handlePushContent);
 ## Additional Improvements
 
 ### 1. Comprehensive Debug Logging
-Added console logging throughout the push flow to help diagnose issues:
+Added console logging throughout the push flow to help diagnose issues. All logging is controlled by a `DEBUG_MODE` flag:
 
 ```javascript
-// On script load
-console.log('LearnDash Master to Client Sync admin.js loaded');
+// Debug mode - set to true to enable console logging for debugging
+// In production, this should be false (default) to avoid console noise
+var DEBUG_MODE = false;
 
-// Modal existence check
-console.log('Modal element check:', modalExists ? 'FOUND' : 'NOT FOUND');
+// Helper functions that respect DEBUG_MODE
+function debugLog() { /* logs only when DEBUG_MODE is true */ }
+function debugWarn() { /* logs only when DEBUG_MODE is true */ }
+function debugError() { /* always logs errors, regardless of DEBUG_MODE */ }
 
-// On button click
-console.log('Push course button clicked', {courseId: courseId, courseTitle: courseTitle});
-
-// On modal display
-console.log('Displaying modal');
+// Usage throughout the code
+debugLog('LearnDash Master to Client Sync admin.js loaded');
+debugLog('Modal element check:', modalExists ? 'FOUND' : 'NOT FOUND');
+debugLog('Push course button clicked', {courseId: courseId, courseTitle: courseTitle});
+debugLog('Displaying modal');
 ```
+
+**To enable debug logging:** Change `DEBUG_MODE = false` to `DEBUG_MODE = true` in `assets/js/admin.js`
+
+**Note:** Error logging via `debugError()` always works, even when `DEBUG_MODE` is false, to ensure critical issues are visible.
 
 ### 2. Error Handling
 Added explicit error handling if the modal element is missing:
 
 ```javascript
 if ($modal.length === 0) {
-    console.error('Modal element #ldmcs-push-modal not found in DOM!');
-    alert('Error: Push modal not found. Please refresh the page and try again.');
+    debugError('Modal element #ldmcs-push-modal not found in DOM!');
+    
+    // Show WordPress-style admin notice instead of alert
+    var $notice = $('<div class="notice notice-error is-dismissible">')
+        .append('<p><strong>Error:</strong> Push modal not found. Please refresh the page and try again.</p>')
+        .append('<button type="button" class="notice-dismiss">...</button>');
+    
+    // Insert after the first h1 or at top of page
+    $('.wrap h1').first().after($notice);
     return;
 }
 ```
+
+The error is displayed as a WordPress-style admin notice instead of a browser alert, providing a better user experience that's consistent with WordPress UI patterns.
 
 ## Testing the Fix
 
@@ -68,17 +84,22 @@ if ($modal.length === 0) {
 
 ### Test Procedure
 
-#### 1. Open the Courses Page
-1. Go to **LearnDash Sync > Courses** in WordPress admin
-2. Open browser Developer Tools (F12)
-3. Check the Console tab
+**Note:** To see console logs during testing, temporarily enable debug mode by changing `DEBUG_MODE = false` to `DEBUG_MODE = true` in `assets/js/admin.js`. Remember to set it back to `false` for production.
 
-**Expected Console Output:**
+#### 1. Open the Courses Page
+1. Enable `DEBUG_MODE = true` in `assets/js/admin.js` (for testing only)
+2. Go to **LearnDash Sync > Courses** in WordPress admin
+3. Open browser Developer Tools (F12)
+4. Check the Console tab
+
+**Expected Console Output (when DEBUG_MODE is true):**
 ```
 LearnDash Master to Client Sync admin.js loaded
 ldmcsAdmin object: available
 Modal element check: FOUND
 ```
+
+**If DEBUG_MODE is false:** You won't see these logs, but the push button should still work correctly. Only errors will be logged.
 
 If you see `Modal element check: NOT FOUND`, this indicates the modal HTML is not being rendered. Check that:
 - Site mode is set to "Master Site"
