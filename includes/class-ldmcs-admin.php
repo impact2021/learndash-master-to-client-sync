@@ -42,9 +42,12 @@ class LDMCS_Admin {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
 
-		// Add UUID column to courses list.
-		add_filter( 'manage_sfwd-courses_posts_columns', array( $this, 'add_uuid_column' ) );
-		add_action( 'manage_sfwd-courses_posts_custom_column', array( $this, 'render_uuid_column' ), 10, 2 );
+		// Add UUID column to LearnDash post types.
+		$learndash_post_types = array( 'sfwd-courses', 'sfwd-lessons', 'sfwd-topic', 'sfwd-quiz', 'sfwd-question' );
+		foreach ( $learndash_post_types as $post_type ) {
+			add_filter( "manage_{$post_type}_posts_columns", array( $this, 'add_uuid_column' ) );
+			add_action( "manage_{$post_type}_posts_custom_column", array( $this, 'render_uuid_column' ), 10, 2 );
+		}
 	}
 
 	/**
