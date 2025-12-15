@@ -183,6 +183,9 @@
 			return;
 		}
 
+		// Show modal
+		showPushModal(courseTitle);
+
 		$button.prop('disabled', true).addClass('ldmcs-disabled');
 		showStatus($status, 'loading', '<span class="ldmcs-spinner"></span>' + ldmcsAdmin.strings.pushing);
 
@@ -198,17 +201,20 @@
 				if (response.success) {
 					var message = response.data.message;
 					showStatus($status, 'success', message);
+					updateModalWithResults(response.data);
 					
-					// Auto-hide after 5 seconds
+					// Auto-hide status after 5 seconds
 					setTimeout(function() {
 						$status.slideUp();
 					}, 5000);
 				} else {
 					showStatus($status, 'error', ldmcsAdmin.strings.pushError + '<br>' + (response.data.message || ''));
+					updateModalWithError(response.data.message || ldmcsAdmin.strings.pushError);
 				}
 			},
-			error: function() {
+			error: function(xhr, status, error) {
 				showStatus($status, 'error', ldmcsAdmin.strings.pushError);
+				updateModalWithError(ldmcsAdmin.strings.pushError + ': ' + error);
 			},
 			complete: function() {
 				$button.prop('disabled', false).removeClass('ldmcs-disabled');
@@ -304,6 +310,9 @@
 			return;
 		}
 
+		// Show modal
+		showPushModal(contentTitle);
+
 		$button.prop('disabled', true).addClass('ldmcs-disabled');
 		showStatus($status, 'loading', '<span class="ldmcs-spinner"></span>' + ldmcsAdmin.strings.pushing);
 
@@ -320,17 +329,20 @@
 				if (response.success) {
 					var message = response.data.message;
 					showStatus($status, 'success', message);
+					updateModalWithResults(response.data);
 					
-					// Auto-hide after 5 seconds
+					// Auto-hide status after 5 seconds
 					setTimeout(function() {
 						$status.slideUp();
 					}, 5000);
 				} else {
 					showStatus($status, 'error', ldmcsAdmin.strings.pushError + '<br>' + (response.data.message || ''));
+					updateModalWithError(response.data.message || ldmcsAdmin.strings.pushError);
 				}
 			},
-			error: function() {
+			error: function(xhr, status, error) {
 				showStatus($status, 'error', ldmcsAdmin.strings.pushError);
+				updateModalWithError(ldmcsAdmin.strings.pushError + ': ' + error);
 			},
 			complete: function() {
 				$button.prop('disabled', false).removeClass('ldmcs-disabled');
@@ -351,6 +363,99 @@
 			.addClass(type)
 			.html(message)
 			.slideDown();
+	}
+
+	/**
+	 * Show push modal.
+	 *
+	 * @param {string} contentTitle Content title being pushed.
+	 */
+	function showPushModal(contentTitle) {
+		var $modal = $('#ldmcs-push-modal');
+		var $body = $('#ldmcs-modal-body');
+
+		// Reset modal body
+		$body.html('<div class="ldmcs-progress-item loading"><div class="ldmcs-progress-site"><span class="ldmcs-spinner"></span> Pushing "' + $('<div>').text(contentTitle).html() + '" to client sites...</div></div>');
+
+		// Show modal
+		$modal.fadeIn();
+
+		// Setup close handlers
+		$modal.find('.ldmcs-modal-close, #ldmcs-modal-close-btn').off('click').on('click', function() {
+			$modal.fadeOut();
+		});
+
+		// Close on outside click
+		$(window).off('click.ldmcs-modal').on('click.ldmcs-modal', function(event) {
+			if (event.target.id === 'ldmcs-push-modal') {
+				$modal.fadeOut();
+			}
+		});
+	}
+
+	/**
+	 * Update modal with push results.
+	 *
+	 * @param {object} data Response data from push operation.
+	 */
+	function updateModalWithResults(data) {
+		var $body = $('#ldmcs-modal-body');
+		var html = '';
+
+		// Show overall message
+		html += '<div class="ldmcs-progress-item success">';
+		html += '<div class="ldmcs-progress-site">✓ ' + $('<div>').text(data.message || 'Push completed successfully').html() + '</div>';
+		html += '</div>';
+
+		// Show details per client site
+		if (data.results && data.results.details) {
+			html += '<h3 style="margin-top: 20px; margin-bottom: 10px;">Client Site Results:</h3>';
+
+			for (var siteUrl in data.results.details) {
+				if (data.results.details.hasOwnProperty(siteUrl)) {
+					var detail = data.results.details[siteUrl];
+					var statusClass = detail.success ? 'success' : 'error';
+					var icon = detail.success ? '✓' : '✗';
+
+					html += '<div class="ldmcs-progress-item ' + statusClass + '">';
+					html += '<div class="ldmcs-progress-site">' + icon + ' ' + $('<div>').text(siteUrl).html() + '</div>';
+					html += '<div class="ldmcs-progress-message">' + $('<div>').text(detail.message || '').html() + '</div>';
+
+					// Show additional data if available
+					if (detail.data) {
+						html += '<div class="ldmcs-progress-details">';
+						if (detail.data.synced !== undefined) {
+							html += '<strong>Synced:</strong> ' + detail.data.synced + ' | ';
+						}
+						if (detail.data.skipped !== undefined) {
+							html += '<strong>Skipped:</strong> ' + detail.data.skipped + ' | ';
+						}
+						if (detail.data.errors !== undefined) {
+							html += '<strong>Errors:</strong> ' + detail.data.errors;
+						}
+						html += '</div>';
+					}
+
+					html += '</div>';
+				}
+			}
+		}
+
+		$body.html(html);
+	}
+
+	/**
+	 * Update modal with error message.
+	 *
+	 * @param {string} errorMessage Error message.
+	 */
+	function updateModalWithError(errorMessage) {
+		var $body = $('#ldmcs-modal-body');
+		var html = '<div class="ldmcs-progress-item error">';
+		html += '<div class="ldmcs-progress-site">✗ Push Failed</div>';
+		html += '<div class="ldmcs-progress-message">' + $('<div>').text(errorMessage).html() + '</div>';
+		html += '</div>';
+		$body.html(html);
 	}
 
 	// Initialize on document ready
