@@ -769,6 +769,27 @@ class LDMCS_Master {
 				sprintf( 'learndash_course_get_children (quizzes) returned %d quizzes', is_array( $course_quizzes ) ? count( $course_quizzes ) : 0 )
 			);
 			
+			// If learndash_course_get_children returns empty, try reading from metadata.
+			if ( empty( $course_quizzes ) ) {
+				LDMCS_Logger::log(
+					'master_push',
+					'courses',
+					$course_id,
+					'debug',
+					'learndash_course_get_children returned empty, trying metadata read for quizzes'
+				);
+				
+				$course_quizzes = $this->get_course_quizzes_meta( $course_id );
+				
+				LDMCS_Logger::log(
+					'master_push',
+					'courses',
+					$course_id,
+					'debug',
+					sprintf( 'Metadata read for quizzes returned %d quizzes', count( $course_quizzes ) )
+				);
+			}
+			
 			if ( ! empty( $course_quizzes ) && is_array( $course_quizzes ) ) {
 				foreach ( $course_quizzes as $quiz_id ) {
 					$quiz_post = get_post( $quiz_id );
