@@ -18,14 +18,14 @@
 		// Regenerate API key button
 		$('#ldmcs-regenerate-key').on('click', handleRegenerateApiKey);
 
-		// Push course buttons
-		$('.ldmcs-push-course').on('click', handlePushCourse);
+		// Push course buttons - use event delegation to handle dynamically loaded content
+		$(document).on('click', '.ldmcs-push-course', handlePushCourse);
 
 		// Generate UUIDs button
 		$('#ldmcs-generate-uuids').on('click', handleGenerateUuids);
 
-		// Push content buttons (for all content types)
-		$('.ldmcs-push-content').on('click', handlePushContent);
+		// Push content buttons (for all content types) - use event delegation
+		$(document).on('click', '.ldmcs-push-content', handlePushContent);
 	}
 
 	/**
@@ -179,11 +179,14 @@
 		var courseTitle = $button.data('course-title');
 		var $status = $('#ldmcs-push-status-' + courseId);
 
+		debugLog('Push course button clicked', {courseId: courseId, courseTitle: courseTitle});
+
 		if (!confirm(ldmcsAdmin.strings.confirmPush + '\n\n' + courseTitle)) {
+			debugLog('Push cancelled by user');
 			return;
 		}
 
-		// Show modal
+		debugLog('Showing push modal for:', courseTitle);
 		showPushModal(courseTitle);
 
 		$button.prop('disabled', true).addClass('ldmcs-disabled');
@@ -306,11 +309,18 @@
 		var contentTitle = $button.data('content-title');
 		var $status = $('#ldmcs-push-status-' + contentType + '-' + contentId);
 
+		debugLog('Push content button clicked', {
+			contentId: contentId,
+			contentType: contentType,
+			contentTitle: contentTitle
+		});
+
 		if (!confirm(ldmcsAdmin.strings.confirmPush + '\n\n' + contentTitle)) {
+			debugLog('Push cancelled by user');
 			return;
 		}
 
-		// Show modal
+		debugLog('Showing push modal for:', contentTitle);
 		showPushModal(contentTitle);
 
 		$button.prop('disabled', true).addClass('ldmcs-disabled');
@@ -385,10 +395,42 @@
 		var $body = $('#ldmcs-modal-body');
 		var escapedTitle = escapeHtml(contentTitle);
 
+		debugLog('showPushModal called', {
+			modalFound: $modal.length > 0,
+			bodyFound: $body.length > 0,
+			contentTitle: contentTitle
+		});
+
+		if ($modal.length === 0) {
+			debugError('Modal element #ldmcs-push-modal not found in DOM!');
+			
+			// Show WordPress-style admin notice instead of alert
+			var $notice = $('<div class="notice notice-error is-dismissible">')
+				.append('<p><strong>Error:</strong> Push modal not found. Please refresh the page and try again.</p>')
+				.append('<button type="button" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button>');
+			
+			// Insert after the first h1 in wrap or at top of page
+			if ($('.wrap h1').length > 0) {
+				$('.wrap h1').first().after($notice);
+			} else {
+				$('.wrap').prepend($notice);
+			}
+			
+			// Make dismiss button work
+			$notice.find('.notice-dismiss').on('click', function() {
+				$notice.fadeOut(NOTICE_FADE_DURATION, function() {
+					$(this).remove();
+				});
+			});
+			
+			return;
+		}
+
 		// Reset modal body
 		$body.html('<div class="ldmcs-progress-item loading"><div class="ldmcs-progress-site"><span class="ldmcs-spinner"></span> Pushing "' + escapedTitle + '" to client sites...</div></div>');
 
 		// Show modal
+		debugLog('Displaying modal');
 		$modal.fadeIn();
 
 		// Setup close handlers
@@ -469,7 +511,68 @@
 		$body.html(html);
 	}
 
+	// Debug mode - set to true to enable console logging for debugging
+	// In production, this should be false to avoid console noise
+	var DEBUG_MODE = false;
+	
+	// Modal check delay to allow DOM to fully render (in milliseconds)
+	var MODAL_CHECK_DELAY = 100;
+	
+	// Animation duration for notice fade out (in milliseconds)
+	var NOTICE_FADE_DURATION = 300;
+
+	/**
+	 * Debug log helper - only logs when DEBUG_MODE is true.
+	 *
+	 * @param {...*} args Arguments to log.
+	 */
+	function debugLog() {
+		if (DEBUG_MODE && console && console.log) {
+			console.log.apply(console, arguments);
+		}
+	}
+
+	/**
+	 * Debug warn helper - only logs when DEBUG_MODE is true.
+	 *
+	 * @param {...*} args Arguments to log.
+	 */
+	function debugWarn() {
+		if (DEBUG_MODE && console && console.warn) {
+			console.warn.apply(console, arguments);
+		}
+	}
+
+	/**
+	 * Debug error helper - always logs errors regardless of DEBUG_MODE.
+	 * Unlike debugLog() and debugWarn(), this function logs in production environments
+	 * to ensure critical errors are visible for troubleshooting. This is intentional
+	 * behavior to help diagnose issues even when debug mode is disabled.
+	 *
+	 * @param {...*} args Arguments to log to console.error.
+	 */
+	function debugError() {
+		if (console && console.error) {
+			console.error.apply(console, arguments);
+		}
+	}
+
 	// Initialize on document ready
-	$(document).ready(init);
+	$(document).ready(function() {
+		debugLog('LearnDash Master to Client Sync admin.js loaded');
+		debugLog('ldmcsAdmin object:', typeof ldmcsAdmin !== 'undefined' ? 'available' : 'NOT FOUND');
+		
+		// Check if modal exists after DOM is fully rendered
+		// Small delay ensures admin_footer content is rendered
+		setTimeout(function() {
+			var modalExists = $('#ldmcs-push-modal').length > 0;
+			debugLog('Modal element check:', modalExists ? 'FOUND' : 'NOT FOUND');
+			if (!modalExists) {
+				debugWarn('Warning: Push modal #ldmcs-push-modal not found in DOM. Push buttons will show an error.');
+			}
+		}, MODAL_CHECK_DELAY);
+		
+		init();
+	});
 
 })(jQuery);
