@@ -753,19 +753,7 @@ class LDMCS_Master {
 				$quiz_post = get_post( $quiz_id );
 				if ( $quiz_post && 'sfwd-quiz' === $quiz_post->post_type ) {
 					// Check if already added from lesson processing.
-					$already_added = false;
-					foreach ( $items as $item ) {
-						if ( 'quizzes' === $item['type'] && isset( $item['data']['id'] ) ) {
-							$item_uuid = $item['data']['id'];
-							$quiz_uuid = get_post_meta( $quiz_id, LDMCS_Sync::UUID_META_KEY, true );
-							if ( $item_uuid === $quiz_uuid || ( empty( $quiz_uuid ) && $item['data']['id'] === $quiz_id ) ) {
-								$already_added = true;
-								break;
-							}
-						}
-					}
-
-					if ( ! $already_added ) {
+					if ( ! $this->is_quiz_already_added( $quiz_id, $items ) ) {
 						$items[] = array(
 							'type' => 'quizzes',
 							'data' => $this->prepare_push_item( $quiz_post, 'quizzes' ),
@@ -798,10 +786,9 @@ class LDMCS_Master {
 			$questions = learndash_get_quiz_questions( $quiz_id );
 			if ( is_array( $questions ) ) {
 				foreach ( $questions as $question ) {
-					if ( is_array( $question ) && isset( $question['id'] ) ) {
-						$question_ids[] = $question['id'];
-					} elseif ( is_object( $question ) && isset( $question->ID ) ) {
-						$question_ids[] = $question->ID;
+					$question_id = $this->extract_question_id( $question );
+					if ( $question_id ) {
+						$question_ids[] = $question_id;
 					}
 				}
 			}
@@ -859,6 +846,8 @@ class LDMCS_Master {
 	private function get_lesson_topics_meta( $lesson_id, $course_id ) {
 		// Try ld_course_steps meta first.
 		$steps = get_post_meta( $course_id, 'ld_course_steps', true );
+		// LearnDash uses 'h' prefix for hierarchical lesson keys in the steps array.
+		// Format: $steps['sfwd-lessons']['h123'] where 123 is the lesson ID.
 		if ( ! empty( $steps ) && is_array( $steps ) && isset( $steps['sfwd-lessons'][ 'h' . $lesson_id ] ) ) {
 			return array_keys( $steps['sfwd-lessons'][ 'h' . $lesson_id ] );
 		}
@@ -942,5 +931,53 @@ class LDMCS_Master {
 		}
 
 		return array();
+	}
+
+	/**
+	 * Check if a quiz is already in the items array.
+	 *
+	 * @param int   $quiz_id Quiz ID to check.
+	 * @param array $items   Array of items to search.
+	 * @return bool True if quiz is already added, false otherwise.
+	 */
+	private function is_quiz_already_added( $quiz_id, $items ) {
+		$quiz_uuid = get_post_meta( $quiz_id, LDMCS_Sync::UUID_META_KEY, true );
+		
+		foreach ( $items as $item ) {
+			if ( 'quizzes' !== $item['type'] || ! isset( $item['data']['id'] ) ) {
+				continue;
+			}
+			
+			$item_uuid = $item['data']['id'];
+			
+			// Match by UUID if both have UUIDs, otherwise match by post ID.
+			if ( ! empty( $quiz_uuid ) && $item_uuid === $quiz_uuid ) {
+				return true;
+			}
+			
+			if ( empty( $quiz_uuid ) && $item['data']['id'] === $quiz_id ) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
+	/**
+	 * Extract question ID from question data (handles array or object format).
+	 *
+	 * @param array|object $question Question data from LearnDash.
+	 * @return int|null Question ID or null if not found.
+	 */
+	private function extract_question_id( $question ) {
+		if ( is_array( $question ) && isset( $question['id'] ) ) {
+			return $question['id'];
+		}
+		
+		if ( is_object( $question ) && isset( $question->ID ) ) {
+			return $question->ID;
+		}
+		
+		return null;
 	}
 }
