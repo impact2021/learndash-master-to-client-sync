@@ -48,6 +48,7 @@ class LDMCS_Admin {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
+		add_action( 'admin_footer', array( $this, 'render_push_modal' ) );
 
 		// Add UUID column to LearnDash post types.
 		$learndash_post_types = array( 'sfwd-courses', 'sfwd-lessons', 'sfwd-topic', 'sfwd-quiz', 'sfwd-question' );
@@ -138,7 +139,18 @@ class LDMCS_Admin {
 	 * @param string $hook Current admin page hook.
 	 */
 	public function enqueue_admin_scripts( $hook ) {
-		if ( strpos( $hook, 'ldmcs' ) === false ) {
+		// Load on LDMCS pages and LearnDash post type edit pages.
+		$learndash_post_types = array( 'sfwd-courses', 'sfwd-lessons', 'sfwd-topic', 'sfwd-quiz', 'sfwd-question' );
+		$is_ldmcs_page        = strpos( $hook, 'ldmcs' ) !== false;
+		$is_learndash_page    = false;
+
+		// Check if we're on a LearnDash post type edit page.
+		global $typenow;
+		if ( in_array( $typenow, $learndash_post_types, true ) ) {
+			$is_learndash_page = true;
+		}
+
+		if ( ! $is_ldmcs_page && ! $is_learndash_page ) {
 			return;
 		}
 
@@ -476,29 +488,6 @@ class LDMCS_Admin {
 					</tbody>
 				</table>
 			<?php endif; ?>
-
-			<!-- Push Progress Modal -->
-			<div id="ldmcs-push-modal" class="ldmcs-modal">
-				<div class="ldmcs-modal-content">
-					<div class="ldmcs-modal-header">
-						<span class="ldmcs-modal-close">&times;</span>
-						<h2><?php esc_html_e( 'Pushing Content to Client Sites', 'learndash-master-client-sync' ); ?></h2>
-					</div>
-					<div class="ldmcs-modal-body" id="ldmcs-modal-body">
-						<div class="ldmcs-progress-item loading">
-							<div class="ldmcs-progress-site">
-								<span class="ldmcs-spinner"></span>
-								<?php esc_html_e( 'Initializing push operation...', 'learndash-master-client-sync' ); ?>
-							</div>
-						</div>
-					</div>
-					<div class="ldmcs-modal-footer">
-						<button type="button" class="button button-primary" id="ldmcs-modal-close-btn">
-							<?php esc_html_e( 'Close', 'learndash-master-client-sync' ); ?>
-						</button>
-					</div>
-				</div>
-			</div>
 		</div>
 		<?php
 	}
@@ -660,6 +649,58 @@ class LDMCS_Admin {
 				<?php
 			}
 		}
+	}
+
+	/**
+	 * Render push modal in admin footer for master site pages.
+	 */
+	public function render_push_modal() {
+		$mode = get_option( 'ldmcs_mode', 'client' );
+
+		// Only render on master site.
+		if ( 'master' !== $mode ) {
+			return;
+		}
+
+		// Check if we're on a relevant page.
+		$screen = get_current_screen();
+		if ( ! $screen ) {
+			return;
+		}
+
+		$learndash_post_types = array( 'sfwd-courses', 'sfwd-lessons', 'sfwd-topic', 'sfwd-quiz', 'sfwd-question' );
+		$is_ldmcs_page        = strpos( $screen->id, 'ldmcs' ) !== false;
+		$is_learndash_page    = in_array( $screen->post_type, $learndash_post_types, true );
+
+		if ( ! $is_ldmcs_page && ! $is_learndash_page ) {
+			return;
+		}
+
+		// Render the modal.
+		?>
+		<!-- Push Progress Modal -->
+		<div id="ldmcs-push-modal" class="ldmcs-modal">
+			<div class="ldmcs-modal-content">
+				<div class="ldmcs-modal-header">
+					<span class="ldmcs-modal-close">&times;</span>
+					<h2><?php esc_html_e( 'Pushing Content to Client Sites', 'learndash-master-client-sync' ); ?></h2>
+				</div>
+				<div class="ldmcs-modal-body" id="ldmcs-modal-body">
+					<div class="ldmcs-progress-item loading">
+						<div class="ldmcs-progress-site">
+							<span class="ldmcs-spinner"></span>
+							<?php esc_html_e( 'Initializing push operation...', 'learndash-master-client-sync' ); ?>
+						</div>
+					</div>
+				</div>
+				<div class="ldmcs-modal-footer">
+					<button type="button" class="button button-primary" id="ldmcs-modal-close-btn">
+						<?php esc_html_e( 'Close', 'learndash-master-client-sync' ); ?>
+					</button>
+				</div>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**
