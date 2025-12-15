@@ -18,14 +18,14 @@
 		// Regenerate API key button
 		$('#ldmcs-regenerate-key').on('click', handleRegenerateApiKey);
 
-		// Push course buttons
-		$('.ldmcs-push-course').on('click', handlePushCourse);
+		// Push course buttons - use event delegation to handle dynamically loaded content
+		$(document).on('click', '.ldmcs-push-course', handlePushCourse);
 
 		// Generate UUIDs button
 		$('#ldmcs-generate-uuids').on('click', handleGenerateUuids);
 
-		// Push content buttons (for all content types)
-		$('.ldmcs-push-content').on('click', handlePushContent);
+		// Push content buttons (for all content types) - use event delegation
+		$(document).on('click', '.ldmcs-push-content', handlePushContent);
 	}
 
 	/**
@@ -179,11 +179,16 @@
 		var courseTitle = $button.data('course-title');
 		var $status = $('#ldmcs-push-status-' + courseId);
 
+		// Debug logging
+		console.log('Push course button clicked', {courseId: courseId, courseTitle: courseTitle});
+
 		if (!confirm(ldmcsAdmin.strings.confirmPush + '\n\n' + courseTitle)) {
+			console.log('Push cancelled by user');
 			return;
 		}
 
 		// Show modal
+		console.log('Showing push modal for:', courseTitle);
 		showPushModal(courseTitle);
 
 		$button.prop('disabled', true).addClass('ldmcs-disabled');
@@ -306,11 +311,20 @@
 		var contentTitle = $button.data('content-title');
 		var $status = $('#ldmcs-push-status-' + contentType + '-' + contentId);
 
+		// Debug logging
+		console.log('Push content button clicked', {
+			contentId: contentId,
+			contentType: contentType,
+			contentTitle: contentTitle
+		});
+
 		if (!confirm(ldmcsAdmin.strings.confirmPush + '\n\n' + contentTitle)) {
+			console.log('Push cancelled by user');
 			return;
 		}
 
 		// Show modal
+		console.log('Showing push modal for:', contentTitle);
 		showPushModal(contentTitle);
 
 		$button.prop('disabled', true).addClass('ldmcs-disabled');
@@ -385,10 +399,24 @@
 		var $body = $('#ldmcs-modal-body');
 		var escapedTitle = escapeHtml(contentTitle);
 
+		// Debug logging
+		console.log('showPushModal called', {
+			modalFound: $modal.length > 0,
+			bodyFound: $body.length > 0,
+			contentTitle: contentTitle
+		});
+
+		if ($modal.length === 0) {
+			console.error('Modal element #ldmcs-push-modal not found in DOM!');
+			alert('Error: Push modal not found. Please refresh the page and try again.');
+			return;
+		}
+
 		// Reset modal body
 		$body.html('<div class="ldmcs-progress-item loading"><div class="ldmcs-progress-site"><span class="ldmcs-spinner"></span> Pushing "' + escapedTitle + '" to client sites...</div></div>');
 
 		// Show modal
+		console.log('Displaying modal');
 		$modal.fadeIn();
 
 		// Setup close handlers
