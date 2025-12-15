@@ -181,7 +181,7 @@ class LDMCS_Admin {
 					'generatingUuids'     => __( 'Generating UUIDs...', 'learndash-master-client-sync' ),
 					'uuidsGenerated'      => __( 'UUIDs generated successfully!', 'learndash-master-client-sync' ),
 					'uuidsError'          => __( 'Failed to generate UUIDs.', 'learndash-master-client-sync' ),
-					'confirmGenerateUuids' => __( 'This will generate unique UUIDs for all LearnDash content that doesn\'t have one. This is required for accurate content mapping. Continue?', 'learndash-master-client-sync' ),
+					'confirmGenerateUuids' => __( 'This will generate unique UUIDs for all LearnDash content that does not have one. This is required for accurate content mapping. Continue?', 'learndash-master-client-sync' ),
 				),
 			)
 		);

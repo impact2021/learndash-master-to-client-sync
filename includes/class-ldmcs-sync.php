@@ -233,6 +233,9 @@ class LDMCS_Sync {
 	/**
 	 * Sync a single content item.
 	 *
+	 * This method is public because it's called by LDMCS_API::receive_pushed_content()
+	 * when the client site receives pushed content from the master site.
+	 *
 	 * @param array  $item         Content item data.
 	 * @param string $content_type Content type.
 	 * @return array Sync result.

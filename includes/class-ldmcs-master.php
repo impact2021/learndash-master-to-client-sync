@@ -319,19 +319,17 @@ class LDMCS_Master {
 			wp_send_json_error( array( 'message' => __( 'Invalid content type.', 'learndash-master-client-sync' ) ) );
 		}
 
-		// Get post type from content type.
-		$post_type_map = array(
-			'courses'   => 'sfwd-courses',
-			'lessons'   => 'sfwd-lessons',
-			'topics'    => 'sfwd-topic',
-			'quizzes'   => 'sfwd-quiz',
-			'questions' => 'sfwd-question',
-		);
-
+		// Get post from content ID.
 		$post = get_post( $content_id );
 
-		if ( ! $post || $post->post_type !== $post_type_map[ $content_type ] ) {
+		if ( ! $post ) {
 			wp_send_json_error( array( 'message' => __( 'Content not found.', 'learndash-master-client-sync' ) ) );
+		}
+
+		// Verify the post type matches the content type.
+		$actual_content_type = LDMCS_Sync::get_content_type_from_post_type( $post->post_type );
+		if ( $actual_content_type !== $content_type ) {
+			wp_send_json_error( array( 'message' => __( 'Content type mismatch.', 'learndash-master-client-sync' ) ) );
 		}
 
 		// Get client sites count.
