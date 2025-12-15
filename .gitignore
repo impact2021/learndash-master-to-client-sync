@@ -1,0 +1,28 @@
+# WordPress
+wp-config.php
+wp-content/uploads/
+wp-content/backup-db/
+wp-content/cache/
+wp-content/upgrade/
+
+# Plugin development
+node_modules/
+vendor/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Build artifacts
+/dist/
+/build/
+/tmp/
