@@ -691,23 +691,48 @@ class LDMCS_Master {
 							'type' => $content_type,
 							'data' => $this->prepare_push_item( $step_post, $content_type ),
 						);
+						
+						// Get quizzes attached to this lesson or topic.
+						if ( 'lessons' === $content_type || 'topics' === $content_type ) {
+							$step_quizzes = $this->get_step_quizzes( $step_id, $step_post->post_type );
+							if ( ! empty( $step_quizzes ) ) {
+								foreach ( $step_quizzes as $quiz_id ) {
+									$quiz_post = get_post( $quiz_id );
+									if ( $quiz_post && 'sfwd-quiz' === $quiz_post->post_type ) {
+										// Check if not already added to avoid duplicates.
+										if ( ! $this->is_quiz_already_added( $quiz_id, $items ) ) {
+											$items[] = array(
+												'type' => 'quizzes',
+												'data' => $this->prepare_push_item( $quiz_post, 'quizzes' ),
+											);
+											
+											// Get questions for this quiz.
+											$items = array_merge( $items, $this->get_quiz_questions( $quiz_id ) );
+										}
+									}
+								}
+							}
+						}
 					}
 				}
 			}
 
-			// Get course quizzes using LearnDash 3.0+ method.
+			// Get course-level quizzes using LearnDash 3.0+ method.
 			$course_quizzes = learndash_course_get_children( $course_id, 'sfwd-quiz' );
 			if ( ! empty( $course_quizzes ) && is_array( $course_quizzes ) ) {
 				foreach ( $course_quizzes as $quiz_id ) {
 					$quiz_post = get_post( $quiz_id );
 					if ( $quiz_post ) {
-						$items[] = array(
-							'type' => 'quizzes',
-							'data' => $this->prepare_push_item( $quiz_post, 'quizzes' ),
-						);
+						// Check if not already added to avoid duplicates.
+						if ( ! $this->is_quiz_already_added( $quiz_id, $items ) ) {
+							$items[] = array(
+								'type' => 'quizzes',
+								'data' => $this->prepare_push_item( $quiz_post, 'quizzes' ),
+							);
 
-						// Get questions for this quiz.
-						$items = array_merge( $items, $this->get_quiz_questions( $quiz_id ) );
+							// Get questions for this quiz.
+							$items = array_merge( $items, $this->get_quiz_questions( $quiz_id ) );
+						}
 					}
 				}
 			}
