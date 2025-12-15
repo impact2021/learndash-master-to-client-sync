@@ -30,6 +30,13 @@ class LDMCS_Admin {
 	const INACTIVE_THRESHOLD_DAYS = 7;
 
 	/**
+	 * LearnDash post types.
+	 *
+	 * @var array
+	 */
+	const LEARNDASH_POST_TYPES = array( 'sfwd-courses', 'sfwd-lessons', 'sfwd-topic', 'sfwd-quiz', 'sfwd-question' );
+
+	/**
 	 * Get instance.
 	 *
 	 * @return LDMCS_Admin
@@ -51,8 +58,7 @@ class LDMCS_Admin {
 		add_action( 'admin_footer', array( $this, 'render_push_modal' ) );
 
 		// Add UUID column to LearnDash post types.
-		$learndash_post_types = array( 'sfwd-courses', 'sfwd-lessons', 'sfwd-topic', 'sfwd-quiz', 'sfwd-question' );
-		foreach ( $learndash_post_types as $post_type ) {
+		foreach ( self::LEARNDASH_POST_TYPES as $post_type ) {
 			add_filter( "manage_{$post_type}_posts_columns", array( $this, 'add_uuid_column' ) );
 			add_action( "manage_{$post_type}_posts_custom_column", array( $this, 'render_uuid_column' ), 10, 2 );
 		}
@@ -139,14 +145,13 @@ class LDMCS_Admin {
 	 * @param string $hook Current admin page hook.
 	 */
 	public function enqueue_admin_scripts( $hook ) {
-		// Load on LDMCS pages and LearnDash post type edit pages.
-		$learndash_post_types = array( 'sfwd-courses', 'sfwd-lessons', 'sfwd-topic', 'sfwd-quiz', 'sfwd-question' );
-		$is_ldmcs_page        = strpos( $hook, 'ldmcs' ) !== false;
-		$is_learndash_page    = false;
+		// Load on LDMCS pages and LearnDash post type pages.
+		$is_ldmcs_page     = strpos( $hook, 'ldmcs' ) !== false;
+		$is_learndash_page = false;
 
-		// Check if we're on a LearnDash post type edit page.
-		global $typenow;
-		if ( in_array( $typenow, $learndash_post_types, true ) ) {
+		// Check if we're on a LearnDash post type page.
+		$screen = get_current_screen();
+		if ( $screen && in_array( $screen->post_type, self::LEARNDASH_POST_TYPES, true ) ) {
 			$is_learndash_page = true;
 		}
 
@@ -668,9 +673,8 @@ class LDMCS_Admin {
 			return;
 		}
 
-		$learndash_post_types = array( 'sfwd-courses', 'sfwd-lessons', 'sfwd-topic', 'sfwd-quiz', 'sfwd-question' );
-		$is_ldmcs_page        = strpos( $screen->id, 'ldmcs' ) !== false;
-		$is_learndash_page    = in_array( $screen->post_type, $learndash_post_types, true );
+		$is_ldmcs_page     = strpos( $screen->id, 'ldmcs' ) !== false;
+		$is_learndash_page = in_array( $screen->post_type, self::LEARNDASH_POST_TYPES, true );
 
 		if ( ! $is_ldmcs_page && ! $is_learndash_page ) {
 			return;
