@@ -23,6 +23,13 @@ class LDMCS_Admin {
 	private static $instance = null;
 
 	/**
+	 * Number of days before a client site is considered inactive.
+	 *
+	 * @var int
+	 */
+	const INACTIVE_THRESHOLD_DAYS = 7;
+
+	/**
 	 * Get instance.
 	 *
 	 * @return LDMCS_Admin
@@ -476,7 +483,7 @@ class LDMCS_Admin {
 						$last_connected  = isset( $client_data['last_connected'] ) ? $client_data['last_connected'] : __( 'Unknown', 'learndash-master-client-sync' );
 						$site_url        = isset( $client_data['site_url'] ) ? $client_data['site_url'] : __( 'Unknown', 'learndash-master-client-sync' );
 						$site_name       = isset( $client_data['site_name'] ) ? $client_data['site_name'] : __( 'Unknown', 'learndash-master-client-sync' );
-						
+
 						// Calculate status based on last connection time.
 						$status       = 'active';
 						$status_label = __( 'Active', 'learndash-master-client-sync' );
@@ -484,7 +491,7 @@ class LDMCS_Admin {
 							$last_time = strtotime( $last_connected );
 							$now       = current_time( 'timestamp' );
 							$diff_days = ( $now - $last_time ) / DAY_IN_SECONDS;
-							if ( $diff_days > 7 ) {
+							if ( $diff_days > self::INACTIVE_THRESHOLD_DAYS ) {
 								$status       = 'inactive';
 								$status_label = __( 'Inactive', 'learndash-master-client-sync' );
 							}

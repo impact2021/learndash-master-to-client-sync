@@ -153,7 +153,7 @@ class LDMCS_Master {
 			'courses',
 			$course_id,
 			'success',
-			sprintf( 'Course "%s" (ID: %d) pushed to client sites', $course->post_title, $course_id )
+			sprintf( 'Course "%s" (ID: %d) marked for push to client sites', $course->post_title, $course_id )
 		);
 
 		// Get client sites count for response.
@@ -185,8 +185,8 @@ class LDMCS_Master {
 	public function register_client_site( $site_url, $site_name = '' ) {
 		$client_sites = get_option( 'ldmcs_client_sites', array() );
 
-		// Use URL as unique identifier.
-		$client_id = md5( $site_url );
+		// Use URL as unique identifier with secure hash.
+		$client_id = hash( 'sha256', $site_url );
 
 		// If site name is empty, use URL.
 		if ( empty( $site_name ) ) {
