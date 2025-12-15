@@ -477,31 +477,23 @@ class LDMCS_API {
 			// Pass 'master_push' as sync type since this content was pushed from master
 			$sync_result = LDMCS_Sync::sync_single_item( $item['data'], $item['type'], 'master_push' );
 
+			// Update result counters.
 			if ( 'success' === $sync_result['status'] ) {
 				$results['synced']++;
-				
-				// Track the mapping for structure rebuild.
-				if ( isset( $sync_result['post_id'] ) && isset( $item['data']['id'] ) ) {
-					$uuid_to_post_id_map[ $item['data']['id'] ] = $sync_result['post_id'];
-					
-					// Track course IDs for structure rebuild.
-					if ( 'courses' === $item['type'] ) {
-						$course_ids[] = $sync_result['post_id'];
-					}
-				}
 			} elseif ( 'skipped' === $sync_result['status'] ) {
 				$results['skipped']++;
-				
-				// Even if skipped, track the existing post for mapping.
-				if ( isset( $sync_result['post_id'] ) && isset( $item['data']['id'] ) ) {
-					$uuid_to_post_id_map[ $item['data']['id'] ] = $sync_result['post_id'];
-					
-					if ( 'courses' === $item['type'] ) {
-						$course_ids[] = $sync_result['post_id'];
-					}
-				}
 			} else {
 				$results['errors']++;
+			}
+
+			// Track the mapping for structure rebuild (for both success and skipped).
+			if ( isset( $sync_result['post_id'] ) && isset( $item['data']['id'] ) ) {
+				$uuid_to_post_id_map[ $item['data']['id'] ] = $sync_result['post_id'];
+				
+				// Track course IDs for structure rebuild.
+				if ( 'courses' === $item['type'] ) {
+					$course_ids[] = $sync_result['post_id'];
+				}
 			}
 
 			$results['details'][] = $sync_result;

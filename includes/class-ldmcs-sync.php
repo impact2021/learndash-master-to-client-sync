@@ -615,9 +615,16 @@ class LDMCS_Sync {
 	 * @return int|false Client post ID or false if not found.
 	 */
 	private static function find_client_id_for_master( $master_id, $uuid_to_post_id_map ) {
+		static $cache = array();
+		
 		// If the master_id is already in the map (it's a UUID), return the client ID.
 		if ( isset( $uuid_to_post_id_map[ $master_id ] ) ) {
 			return $uuid_to_post_id_map[ $master_id ];
+		}
+
+		// Check cache to avoid repeated queries.
+		if ( isset( $cache[ $master_id ] ) ) {
+			return $cache[ $master_id ];
 		}
 
 		// Otherwise, try to find by _ldmcs_master_id meta.
@@ -631,7 +638,10 @@ class LDMCS_Sync {
 			)
 		);
 
-		return ! empty( $posts ) ? $posts[0] : false;
+		$client_id = ! empty( $posts ) ? $posts[0] : false;
+		$cache[ $master_id ] = $client_id;
+		
+		return $client_id;
 	}
 
 	/**
