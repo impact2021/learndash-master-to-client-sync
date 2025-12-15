@@ -398,7 +398,9 @@ class LDMCS_Sync {
 			$url,
 			array(
 				'headers' => array(
-					'X-LDMCS-API-Key' => $api_key,
+					'X-LDMCS-API-Key'    => $api_key,
+					'X-LDMCS-Client-URL' => get_site_url(),
+					'X-LDMCS-Client-Name' => get_bloginfo( 'name' ),
 				),
 				'timeout' => 15,
 			)

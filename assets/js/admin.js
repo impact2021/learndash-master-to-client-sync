@@ -17,6 +17,9 @@
 
 		// Regenerate API key button
 		$('#ldmcs-regenerate-key').on('click', handleRegenerateApiKey);
+
+		// Push course buttons
+		$('.ldmcs-push-course').on('click', handlePushCourse);
 	}
 
 	/**
@@ -159,6 +162,52 @@
 			result += chars.charAt(Math.floor(Math.random() * chars.length));
 		}
 		return result;
+	}
+
+	/**
+	 * Handle push course button click.
+	 */
+	function handlePushCourse() {
+		var $button = $(this);
+		var courseId = $button.data('course-id');
+		var courseTitle = $button.data('course-title');
+		var $status = $('#ldmcs-push-status-' + courseId);
+
+		if (!confirm(ldmcsAdmin.strings.confirmPush + '\n\n' + courseTitle)) {
+			return;
+		}
+
+		$button.prop('disabled', true).addClass('ldmcs-disabled');
+		showStatus($status, 'loading', '<span class="ldmcs-spinner"></span>' + ldmcsAdmin.strings.pushing);
+
+		$.ajax({
+			url: ldmcsAdmin.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'ldmcs_push_course',
+				nonce: ldmcsAdmin.pushCourseNonce,
+				course_id: courseId
+			},
+			success: function(response) {
+				if (response.success) {
+					var message = response.data.message;
+					showStatus($status, 'success', message);
+					
+					// Auto-hide after 5 seconds
+					setTimeout(function() {
+						$status.slideUp();
+					}, 5000);
+				} else {
+					showStatus($status, 'error', ldmcsAdmin.strings.pushError + '<br>' + (response.data.message || ''));
+				}
+			},
+			error: function() {
+				showStatus($status, 'error', ldmcsAdmin.strings.pushError);
+			},
+			complete: function() {
+				$button.prop('disabled', false).removeClass('ldmcs-disabled');
+			}
+		});
 	}
 
 	/**
