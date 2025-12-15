@@ -412,7 +412,7 @@ class LDMCS_Admin {
 
 		$courses = get_posts( $args );
 		?>
-		<div class="wrap">
+		<div class="wrap ldmcs-courses-table">
 			<h1><?php esc_html_e( 'LearnDash Courses', 'learndash-master-client-sync' ); ?></h1>
 			<div class="notice notice-info">
 				<p>
@@ -432,10 +432,10 @@ class LDMCS_Admin {
 				<table class="wp-list-table widefat fixed striped">
 					<thead>
 						<tr>
-							<th style="width: 60px;"><?php esc_html_e( 'Master UUID', 'learndash-master-client-sync' ); ?></th>
+							<th style="width: 300px;"><?php esc_html_e( 'Master UUID', 'learndash-master-client-sync' ); ?></th>
 							<th><?php esc_html_e( 'Course Title', 'learndash-master-client-sync' ); ?></th>
-							<th><?php esc_html_e( 'Status', 'learndash-master-client-sync' ); ?></th>
-							<th><?php esc_html_e( 'Last Modified', 'learndash-master-client-sync' ); ?></th>
+							<th style="width: 100px;"><?php esc_html_e( 'Status', 'learndash-master-client-sync' ); ?></th>
+							<th style="width: 150px;"><?php esc_html_e( 'Last Modified', 'learndash-master-client-sync' ); ?></th>
 							<th style="width: 150px;"><?php esc_html_e( 'Actions', 'learndash-master-client-sync' ); ?></th>
 						</tr>
 					</thead>
@@ -476,6 +476,29 @@ class LDMCS_Admin {
 					</tbody>
 				</table>
 			<?php endif; ?>
+
+			<!-- Push Progress Modal -->
+			<div id="ldmcs-push-modal" class="ldmcs-modal">
+				<div class="ldmcs-modal-content">
+					<div class="ldmcs-modal-header">
+						<span class="ldmcs-modal-close">&times;</span>
+						<h2><?php esc_html_e( 'Pushing Content to Client Sites', 'learndash-master-client-sync' ); ?></h2>
+					</div>
+					<div class="ldmcs-modal-body" id="ldmcs-modal-body">
+						<div class="ldmcs-progress-item loading">
+							<div class="ldmcs-progress-site">
+								<span class="ldmcs-spinner"></span>
+								<?php esc_html_e( 'Initializing push operation...', 'learndash-master-client-sync' ); ?>
+							</div>
+						</div>
+					</div>
+					<div class="ldmcs-modal-footer">
+						<button type="button" class="button button-primary" id="ldmcs-modal-close-btn">
+							<?php esc_html_e( 'Close', 'learndash-master-client-sync' ); ?>
+						</button>
+					</div>
+				</div>
+			</div>
 		</div>
 		<?php
 	}
@@ -605,11 +628,12 @@ class LDMCS_Admin {
 				// On master site, show the ld_uuid custom field if available, otherwise show post ID.
 				echo '<strong>' . esc_html( $this->get_display_uuid( $post_id ) ) . '</strong>';
 			} else {
-				// On client site, show both local ID and master UUID.
+				// On client site, show both local UUID and master UUID.
 				$master_id = get_post_meta( $post_id, '_ldmcs_master_id', true );
+				$local_uuid = $this->get_display_uuid( $post_id );
 				
 				echo '<div class="ldmcs-uuid-info">';
-				echo '<div><strong>' . esc_html__( 'Local:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $post_id ) . '</div>';
+				echo '<div><strong>' . esc_html__( 'Local:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $local_uuid ) . '</div>';
 				
 				if ( $master_id ) {
 					echo '<div><strong>' . esc_html__( 'Master:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $master_id ) . '</div>';

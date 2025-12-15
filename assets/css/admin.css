@@ -198,3 +198,136 @@
 .ldmcs-no-master-id {
 	color: #999;
 }
+
+/* UUID display in courses table */
+.ldmcs-courses-table .wp-list-table td {
+	word-break: break-word;
+}
+
+.ldmcs-courses-table .wp-list-table th:first-child,
+.ldmcs-courses-table .wp-list-table td:first-child {
+	font-family: 'Courier New', Courier, monospace;
+	font-size: 11px;
+	color: #2271b1;
+}
+
+/* Modal styles for push operations */
+.ldmcs-modal {
+	display: none;
+	position: fixed;
+	z-index: 100000;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	background-color: rgba(0, 0, 0, 0.5);
+}
+
+.ldmcs-modal-content {
+	background-color: #fff;
+	margin: 5% auto;
+	padding: 0;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	width: 80%;
+	max-width: 800px;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ldmcs-modal-header {
+	padding: 20px;
+	background-color: #f7f7f7;
+	border-bottom: 1px solid #ddd;
+	border-radius: 4px 4px 0 0;
+}
+
+.ldmcs-modal-header h2 {
+	margin: 0;
+	font-size: 20px;
+}
+
+.ldmcs-modal-close {
+	color: #666;
+	float: right;
+	font-size: 28px;
+	font-weight: bold;
+	line-height: 20px;
+	cursor: pointer;
+}
+
+.ldmcs-modal-close:hover,
+.ldmcs-modal-close:focus {
+	color: #000;
+}
+
+.ldmcs-modal-body {
+	padding: 20px;
+	max-height: 500px;
+	overflow-y: auto;
+}
+
+.ldmcs-modal-footer {
+	padding: 15px 20px;
+	background-color: #f7f7f7;
+	border-top: 1px solid #ddd;
+	text-align: right;
+	border-radius: 0 0 4px 4px;
+}
+
+.ldmcs-progress-item {
+	padding: 10px;
+	margin-bottom: 10px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	background-color: #f9f9f9;
+}
+
+.ldmcs-progress-item.success {
+	background-color: #ecf7ed;
+	border-color: #46b450;
+}
+
+.ldmcs-progress-item.error {
+	background-color: #f8d7da;
+	border-color: #dc3232;
+}
+
+.ldmcs-progress-item.loading {
+	background-color: #f0f6fc;
+	border-color: #0073aa;
+}
+
+.ldmcs-progress-site {
+	font-weight: bold;
+	margin-bottom: 5px;
+}
+
+.ldmcs-progress-message {
+	font-size: 13px;
+	color: #666;
+}
+
+.ldmcs-progress-details {
+	margin-top: 10px;
+	font-size: 12px;
+	color: #666;
+}
+
+.ldmcs-progress-details table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 5px;
+}
+
+.ldmcs-progress-details th,
+.ldmcs-progress-details td {
+	padding: 5px;
+	text-align: left;
+	border-bottom: 1px solid #ddd;
+}
+
+.ldmcs-progress-details th {
+	background-color: #f1f1f1;
+	font-weight: 600;
+}
