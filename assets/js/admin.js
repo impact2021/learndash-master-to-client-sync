@@ -20,6 +20,12 @@
 
 		// Push course buttons
 		$('.ldmcs-push-course').on('click', handlePushCourse);
+
+		// Generate UUIDs button
+		$('#ldmcs-generate-uuids').on('click', handleGenerateUuids);
+
+		// Push content buttons (for all content types)
+		$('.ldmcs-push-content').on('click', handlePushContent);
 	}
 
 	/**
@@ -187,6 +193,128 @@
 				action: 'ldmcs_push_course',
 				nonce: ldmcsAdmin.pushCourseNonce,
 				course_id: courseId
+			},
+			success: function(response) {
+				if (response.success) {
+					var message = response.data.message;
+					showStatus($status, 'success', message);
+					
+					// Auto-hide after 5 seconds
+					setTimeout(function() {
+						$status.slideUp();
+					}, 5000);
+				} else {
+					showStatus($status, 'error', ldmcsAdmin.strings.pushError + '<br>' + (response.data.message || ''));
+				}
+			},
+			error: function() {
+				showStatus($status, 'error', ldmcsAdmin.strings.pushError);
+			},
+			complete: function() {
+				$button.prop('disabled', false).removeClass('ldmcs-disabled');
+			}
+		});
+	}
+
+	/**
+	 * Handle generate UUIDs button click.
+	 */
+	function handleGenerateUuids() {
+		var $button = $(this);
+		var $status = $('#ldmcs-generate-uuids-status');
+
+		if (!confirm(ldmcsAdmin.strings.confirmGenerateUuids)) {
+			return;
+		}
+
+		$button.prop('disabled', true).addClass('ldmcs-disabled');
+		showStatus($status, 'loading', '<span class="ldmcs-spinner"></span>' + ldmcsAdmin.strings.generatingUuids);
+
+		$.ajax({
+			url: ldmcsAdmin.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'ldmcs_generate_uuids',
+				nonce: ldmcsAdmin.generateUuidsNonce
+			},
+			success: function(response) {
+				if (response.success) {
+					var message = $('<div>').text(response.data.message).html();
+					if (response.data.results && response.data.results.details) {
+						var $table = $('<table>').addClass('ldmcs-uuid-results-table');
+						var $thead = $('<thead>').append(
+							$('<tr>').append(
+								$('<th>').text('Content Type'),
+								$('<th>').text('Updated'),
+								$('<th>').text('Already Had UUID'),
+								$('<th>').text('Total')
+							)
+						);
+						var $tbody = $('<tbody>');
+						
+						for (var type in response.data.results.details) {
+							if (response.data.results.details.hasOwnProperty(type)) {
+								var detail = response.data.results.details[type];
+								$tbody.append(
+									$('<tr>').append(
+										$('<td>').text(type),
+										$('<td>').text(detail.updated),
+										$('<td>').text(detail.skipped),
+										$('<td>').text(detail.total)
+									)
+								);
+							}
+						}
+						
+						$table.append($thead, $tbody);
+						message += '<div class="ldmcs-uuid-results"></div>';
+						showStatus($status, 'success', message);
+						$status.find('.ldmcs-uuid-results').append($table);
+					} else {
+						showStatus($status, 'success', message);
+					}
+				} else {
+					var errorMsg = ldmcsAdmin.strings.uuidsError;
+					if (response.data && response.data.message) {
+						errorMsg += '<br>' + $('<div>').text(response.data.message).html();
+					}
+					showStatus($status, 'error', errorMsg);
+				}
+			},
+			error: function() {
+				showStatus($status, 'error', ldmcsAdmin.strings.uuidsError);
+			},
+			complete: function() {
+				$button.prop('disabled', false).removeClass('ldmcs-disabled');
+			}
+		});
+	}
+
+	/**
+	 * Handle push content button click (generic for all content types).
+	 */
+	function handlePushContent() {
+		var $button = $(this);
+		var contentId = $button.data('content-id');
+		var contentType = $button.data('content-type');
+		var contentTitle = $button.data('content-title');
+		var $status = $('#ldmcs-push-status-' + contentType + '-' + contentId);
+
+		if (!confirm(ldmcsAdmin.strings.confirmPush + '\n\n' + contentTitle)) {
+			return;
+		}
+
+		$button.prop('disabled', true).addClass('ldmcs-disabled');
+		showStatus($status, 'loading', '<span class="ldmcs-spinner"></span>' + ldmcsAdmin.strings.pushing);
+
+		$.ajax({
+			url: ldmcsAdmin.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'ldmcs_push_content',
+				nonce: ldmcsAdmin.pushContentNonce,
+				content_id: contentId,
+				content_type: contentType
 			},
 			success: function(response) {
 				if (response.success) {

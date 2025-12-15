@@ -2,6 +2,26 @@
 /**
  * Sync handler for content synchronization.
  *
+ * CRITICAL SAFETY NOTICE:
+ * =======================
+ * This sync system ONLY synchronizes course CONTENT and STRUCTURE.
+ *
+ * What IS synced:
+ * - Course, Lesson, Topic, Quiz, Question posts (titles, content, settings)
+ * - Course structure metadata (prerequisites, drip settings, access settings)
+ * - Taxonomies (categories, tags)
+ *
+ * What is NEVER synced (User Data Protection):
+ * - User enrollments
+ * - User progress/completion data
+ * - Quiz attempts and scores
+ * - Course/lesson completion records
+ * - User activity logs
+ * - Any user-specific data
+ *
+ * Users on client sites can continue learning without interruption.
+ * Their progress is stored separately and remains completely untouched.
+ *
  * @package LearnDash_Master_Client_Sync
  */
 
@@ -14,6 +34,43 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Sync class.
  */
 class LDMCS_Sync {
+
+	/**
+	 * UUID meta key.
+	 */
+	const UUID_META_KEY = 'ld_uuid';
+
+	/**
+	 * Post type to content type mapping.
+	 *
+	 * @var array
+	 */
+	private static $post_type_mapping = array(
+		'courses'   => 'sfwd-courses',
+		'lessons'   => 'sfwd-lessons',
+		'topics'    => 'sfwd-topic',
+		'quizzes'   => 'sfwd-quiz',
+		'questions' => 'sfwd-question',
+	);
+
+	/**
+	 * Unsafe meta key patterns that should never be synced (user data).
+	 *
+	 * @var array
+	 */
+	private static $unsafe_meta_patterns = array(
+		'_sfwd-quizzes',           // User quiz attempts
+		'_quiz_',                  // Quiz user data
+		'_user_',                  // User-specific data
+		'learndash_user_activity', // User activity
+		'course_completed',        // User completion data
+		'completed_',              // Any completion data
+		'_progress_',              // Progress data
+		'_enrolled_',              // Enrollment data
+		'_access_',                // Access data
+		'_ldmcs_master_id',        // Don't sync our own tracking meta
+		'_ldmcs_last_sync',        // Don't sync our own tracking meta
+	);
 
 	/**
 	 * Sync content from master to client.
@@ -176,11 +233,14 @@ class LDMCS_Sync {
 	/**
 	 * Sync a single content item.
 	 *
+	 * This method is public because it's called by LDMCS_API::receive_pushed_content()
+	 * when the client site receives pushed content from the master site.
+	 *
 	 * @param array  $item         Content item data.
 	 * @param string $content_type Content type.
 	 * @return array Sync result.
 	 */
-	private static function sync_single_item( $item, $content_type ) {
+	public static function sync_single_item( $item, $content_type ) {
 		$post_type = self::get_post_type_from_content_type( $content_type );
 
 		// Check if content already exists.
@@ -267,6 +327,10 @@ class LDMCS_Sync {
 	/**
 	 * Create new content.
 	 *
+	 * IMPORTANT: This function ONLY creates/updates course structure content.
+	 * It does NOT touch any user data, user progress, or user enrollment data.
+	 * User progress and enrollments are stored separately and remain untouched.
+	 *
 	 * @param array  $item      Content item data.
 	 * @param string $post_type Post type.
 	 * @return int|WP_Error Post ID or error.
@@ -294,18 +358,22 @@ class LDMCS_Sync {
 			return $post_id;
 		}
 
-		// Store master ID.
+		// Store master ID for content mapping.
 		update_post_meta( $post_id, '_ldmcs_master_id', $item['id'] );
 		update_post_meta( $post_id, '_ldmcs_last_sync', current_time( 'mysql' ) );
 
-		// Update meta data.
+		// Update ONLY course structure metadata (no user data).
+		// The metadata filtering in get_learndash_meta() ensures user progress is excluded.
 		if ( isset( $item['meta'] ) && is_array( $item['meta'] ) ) {
 			foreach ( $item['meta'] as $meta_key => $meta_value ) {
-				update_post_meta( $post_id, $meta_key, $meta_value );
+				// Double-check: never update user-related meta.
+				if ( self::is_safe_meta_key( $meta_key ) ) {
+					update_post_meta( $post_id, $meta_key, $meta_value );
+				}
 			}
 		}
 
-		// Update taxonomies.
+		// Update taxonomies (categories, tags - no user data).
 		if ( isset( $item['taxonomies'] ) && is_array( $item['taxonomies'] ) ) {
 			foreach ( $item['taxonomies'] as $taxonomy => $terms ) {
 				wp_set_object_terms( $post_id, $terms, $taxonomy );
@@ -317,6 +385,10 @@ class LDMCS_Sync {
 
 	/**
 	 * Update existing content.
+	 *
+	 * IMPORTANT: This function ONLY updates course structure content.
+	 * It does NOT touch any user data, user progress, or user enrollment data.
+	 * User progress and enrollments are stored separately and remain untouched.
 	 *
 	 * @param int    $post_id   Post ID.
 	 * @param array  $item      Content item data.
@@ -345,18 +417,22 @@ class LDMCS_Sync {
 			return false;
 		}
 
-		// Update master ID and sync time.
+		// Update master ID and sync time for content mapping.
 		update_post_meta( $post_id, '_ldmcs_master_id', $item['id'] );
 		update_post_meta( $post_id, '_ldmcs_last_sync', current_time( 'mysql' ) );
 
-		// Update meta data.
+		// Update ONLY course structure metadata (no user data).
+		// The metadata filtering in get_learndash_meta() ensures user progress is excluded.
 		if ( isset( $item['meta'] ) && is_array( $item['meta'] ) ) {
 			foreach ( $item['meta'] as $meta_key => $meta_value ) {
-				update_post_meta( $post_id, $meta_key, $meta_value );
+				// Double-check: never update user-related meta.
+				if ( self::is_safe_meta_key( $meta_key ) ) {
+					update_post_meta( $post_id, $meta_key, $meta_value );
+				}
 			}
 		}
 
-		// Update taxonomies.
+		// Update taxonomies (categories, tags - no user data).
 		if ( isset( $item['taxonomies'] ) && is_array( $item['taxonomies'] ) ) {
 			foreach ( $item['taxonomies'] as $taxonomy => $terms ) {
 				wp_set_object_terms( $post_id, $terms, $taxonomy );
@@ -367,21 +443,49 @@ class LDMCS_Sync {
 	}
 
 	/**
+	 * Check if a meta key is safe to sync (doesn't contain user data).
+	 *
+	 * @param string $meta_key Meta key to check.
+	 * @return bool True if safe to sync, false otherwise.
+	 */
+	private static function is_safe_meta_key( $meta_key ) {
+		foreach ( self::$unsafe_meta_patterns as $pattern ) {
+			if ( strpos( $meta_key, $pattern ) !== false ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Get unsafe meta patterns.
+	 *
+	 * @return array Unsafe patterns.
+	 */
+	public static function get_unsafe_meta_patterns() {
+		return self::$unsafe_meta_patterns;
+	}
+
+	/**
 	 * Get post type from content type.
 	 *
 	 * @param string $content_type Content type.
 	 * @return string
 	 */
 	private static function get_post_type_from_content_type( $content_type ) {
-		$mapping = array(
-			'courses'   => 'sfwd-courses',
-			'lessons'   => 'sfwd-lessons',
-			'topics'    => 'sfwd-topic',
-			'quizzes'   => 'sfwd-quiz',
-			'questions' => 'sfwd-question',
-		);
+		return isset( self::$post_type_mapping[ $content_type ] ) ? self::$post_type_mapping[ $content_type ] : '';
+	}
 
-		return isset( $mapping[ $content_type ] ) ? $mapping[ $content_type ] : '';
+	/**
+	 * Get content type from post type.
+	 *
+	 * @param string $post_type Post type.
+	 * @return string|false Content type or false.
+	 */
+	public static function get_content_type_from_post_type( $post_type ) {
+		$reversed = array_flip( self::$post_type_mapping );
+		return isset( $reversed[ $post_type ] ) ? $reversed[ $post_type ] : false;
 	}
 
 	/**

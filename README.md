@@ -13,9 +13,12 @@ This plugin enables seamless synchronization of LearnDash LMS content (courses, 
 
 ## Features
 
-- ✅ Sync LearnDash courses, lessons, topics, quizzes, and questions
+- ✅ **Push from Master:** Push content from master site to all connected client sites with one click
+- ✅ **UUID-Based Mapping:** Automatic UUID generation for accurate content mapping and updates
+- ✅ **Push All Content Types:** Push buttons for Courses, Lessons, Topics, Quizzes, and Questions
+- ✅ **User Data Protection:** User enrollments, progress, and quiz attempts are never affected
+- ✅ **Complete Course Hierarchy:** Pushing a course automatically includes all lessons, topics, quizzes, and questions
 - ✅ REST API for secure master-client communication
-- ✅ Automatic scheduled syncing or manual on-demand sync
 - ✅ Configurable conflict resolution (skip or overwrite)
 - ✅ Batch processing to minimize server load
 - ✅ Comprehensive sync logging
@@ -62,22 +65,49 @@ This plugin enables seamless synchronization of LearnDash LMS content (courses, 
 
 ## Usage
 
-### Manual Sync
+### Push Content from Master Site (Recommended)
+
+The primary way to sync content is to push from the master site:
+
+1. **Generate UUIDs (One-Time Setup):**
+   - Go to **LearnDash Sync > Settings** on master site
+   - Click **"Generate UUIDs for All Content"**
+   - This ensures accurate content mapping
+
+2. **Push Individual Content:**
+   - On any LearnDash content list page, click the **"Push"** button
+   - Content is immediately pushed to all connected client sites
+
+3. **Push Complete Courses:**
+   - Go to **LearnDash Sync > Courses**
+   - Click **"Push to Clients"** next to any course
+   - The entire course hierarchy (lessons, topics, quizzes, questions) is pushed
+
+**Important:** User enrollments, progress, quiz attempts, and completion data are NEVER affected. Users can continue learning without interruption.
+
+### Manual Sync (Legacy - Client Pull)
 
 On a client site, go to **LearnDash Sync > Settings** and click the **Sync Now** button to manually trigger a sync operation.
-
-### Automatic Sync
-
-Enable **Auto Sync** in the settings to automatically sync content based on the configured interval. The plugin uses WordPress cron to schedule background sync operations.
 
 ### View Sync Logs
 
 Go to **LearnDash Sync > Sync Logs** to view a history of sync operations, including:
 - Date/time of sync
-- Sync type (master update, client pull)
+- Sync type (master push, client pull)
 - Content type and ID
 - Status (success, error, skipped)
 - Detailed messages
+
+### User Safety
+
+**This plugin ONLY syncs course content and structure. It NEVER touches:**
+- User enrollments
+- User progress
+- Quiz attempts and scores
+- Course completions
+- Any user-specific data
+
+All user data is completely safe and preserved during sync operations.
 
 ## Performance Considerations
 

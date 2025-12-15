@@ -108,6 +108,17 @@ class LDMCS_API {
 				'permission_callback' => array( $this, 'check_api_key' ),
 			)
 		);
+
+		// Receive pushed content endpoint (for client sites).
+		register_rest_route(
+			$this->namespace,
+			'/receive',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'receive_pushed_content' ),
+				'permission_callback' => array( $this, 'check_api_key' ),
+			)
+		);
 	}
 
 	/**
@@ -295,8 +306,8 @@ class LDMCS_API {
 	 * @return array
 	 */
 	private function prepare_content_item( $post, $content_type ) {
-		// Use ld_uuid as the ID if available, otherwise fall back to post ID.
-		$uuid = get_post_meta( $post->ID, 'ld_uuid', true );
+		// Use UUID as the ID if available, otherwise fall back to post ID.
+		$uuid = get_post_meta( $post->ID, LDMCS_Sync::UUID_META_KEY, true );
 		$master_id = ! empty( $uuid ) ? $uuid : $post->ID;
 
 		$item = array(
@@ -331,8 +342,25 @@ class LDMCS_API {
 		// Get all post meta.
 		$all_meta = get_post_meta( $post_id );
 
-		// Filter LearnDash specific meta keys.
+		// Use shared unsafe patterns from sync class.
+		$excluded_patterns = LDMCS_Sync::get_unsafe_meta_patterns();
+
+		// Filter LearnDash specific meta keys but exclude user data.
 		foreach ( $all_meta as $key => $value ) {
+			// Skip if matches excluded patterns.
+			$should_exclude = false;
+			foreach ( $excluded_patterns as $pattern ) {
+				if ( strpos( $key, $pattern ) !== false ) {
+					$should_exclude = true;
+					break;
+				}
+			}
+
+			if ( $should_exclude ) {
+				continue;
+			}
+
+			// Include LearnDash configuration meta only (not user data).
 			if ( strpos( $key, '_' ) === 0 || strpos( $key, 'ld_' ) === 0 || strpos( $key, 'course_' ) === 0 ) {
 				$meta[ $key ] = maybe_unserialize( $value[0] );
 			}
@@ -359,5 +387,62 @@ class LDMCS_API {
 		}
 
 		return $taxonomies;
+	}
+
+	/**
+	 * Receive pushed content from master site.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function receive_pushed_content( $request ) {
+		// Only process this on client sites.
+		if ( 'client' !== get_option( 'ldmcs_mode', 'client' ) ) {
+			return new WP_Error(
+				'ldmcs_invalid_mode',
+				__( 'This endpoint is only available on client sites.', 'learndash-master-client-sync' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$content = $request->get_json_params();
+
+		if ( empty( $content ) || ! isset( $content['items'] ) ) {
+			return new WP_Error(
+				'ldmcs_invalid_data',
+				__( 'Invalid content data.', 'learndash-master-client-sync' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$results = array(
+			'success' => true,
+			'synced'  => 0,
+			'skipped' => 0,
+			'errors'  => 0,
+			'details' => array(),
+		);
+
+		// Process each content item.
+		foreach ( $content['items'] as $item ) {
+			if ( ! isset( $item['type'] ) || ! isset( $item['data'] ) ) {
+				$results['errors']++;
+				continue;
+			}
+
+			$sync_result = LDMCS_Sync::sync_single_item( $item['data'], $item['type'] );
+
+			if ( 'success' === $sync_result['status'] ) {
+				$results['synced']++;
+			} elseif ( 'skipped' === $sync_result['status'] ) {
+				$results['skipped']++;
+			} else {
+				$results['errors']++;
+			}
+
+			$results['details'][] = $sync_result;
+		}
+
+		return new WP_REST_Response( $results );
 	}
 }
