@@ -418,7 +418,7 @@
 			
 			// Make dismiss button work
 			$notice.find('.notice-dismiss').on('click', function() {
-				$notice.fadeOut(function() {
+				$notice.fadeOut(NOTICE_FADE_DURATION, function() {
 					$(this).remove();
 				});
 			});
@@ -515,8 +515,11 @@
 	// In production, this should be false to avoid console noise
 	var DEBUG_MODE = false;
 	
-	// Modal check delay to allow DOM to fully render
+	// Modal check delay to allow DOM to fully render (in milliseconds)
 	var MODAL_CHECK_DELAY = 100;
+	
+	// Animation duration for notice fade out (in milliseconds)
+	var NOTICE_FADE_DURATION = 300;
 
 	/**
 	 * Debug log helper - only logs when DEBUG_MODE is true.
@@ -542,9 +545,11 @@
 
 	/**
 	 * Debug error helper - always logs errors regardless of DEBUG_MODE.
-	 * Errors should always be visible to help diagnose issues in production.
+	 * Unlike debugLog() and debugWarn(), this function logs in production environments
+	 * to ensure critical errors are visible for troubleshooting. This is intentional
+	 * behavior to help diagnose issues even when debug mode is disabled.
 	 *
-	 * @param {...*} args Arguments to log.
+	 * @param {...*} args Arguments to log to console.error.
 	 */
 	function debugError() {
 		if (console && console.error) {
