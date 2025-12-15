@@ -366,6 +366,16 @@
 	}
 
 	/**
+	 * Escape HTML for safe display.
+	 *
+	 * @param {string} text Text to escape.
+	 * @return {string} Escaped HTML.
+	 */
+	function escapeHtml(text) {
+		return $('<div>').text(text).html();
+	}
+
+	/**
 	 * Show push modal.
 	 *
 	 * @param {string} contentTitle Content title being pushed.
@@ -373,9 +383,10 @@
 	function showPushModal(contentTitle) {
 		var $modal = $('#ldmcs-push-modal');
 		var $body = $('#ldmcs-modal-body');
+		var escapedTitle = escapeHtml(contentTitle);
 
 		// Reset modal body
-		$body.html('<div class="ldmcs-progress-item loading"><div class="ldmcs-progress-site"><span class="ldmcs-spinner"></span> Pushing "' + $('<div>').text(contentTitle).html() + '" to client sites...</div></div>');
+		$body.html('<div class="ldmcs-progress-item loading"><div class="ldmcs-progress-site"><span class="ldmcs-spinner"></span> Pushing "' + escapedTitle + '" to client sites...</div></div>');
 
 		// Show modal
 		$modal.fadeIn();
@@ -404,7 +415,7 @@
 
 		// Show overall message
 		html += '<div class="ldmcs-progress-item success">';
-		html += '<div class="ldmcs-progress-site">✓ ' + $('<div>').text(data.message || 'Push completed successfully').html() + '</div>';
+		html += '<div class="ldmcs-progress-site">✓ ' + escapeHtml(data.message || 'Push completed successfully') + '</div>';
 		html += '</div>';
 
 		// Show details per client site
@@ -418,8 +429,8 @@
 					var icon = detail.success ? '✓' : '✗';
 
 					html += '<div class="ldmcs-progress-item ' + statusClass + '">';
-					html += '<div class="ldmcs-progress-site">' + icon + ' ' + $('<div>').text(siteUrl).html() + '</div>';
-					html += '<div class="ldmcs-progress-message">' + $('<div>').text(detail.message || '').html() + '</div>';
+					html += '<div class="ldmcs-progress-site">' + icon + ' ' + escapeHtml(siteUrl) + '</div>';
+					html += '<div class="ldmcs-progress-message">' + escapeHtml(detail.message || '') + '</div>';
 
 					// Show additional data if available
 					if (detail.data) {
@@ -453,7 +464,7 @@
 		var $body = $('#ldmcs-modal-body');
 		var html = '<div class="ldmcs-progress-item error">';
 		html += '<div class="ldmcs-progress-site">✗ Push Failed</div>';
-		html += '<div class="ldmcs-progress-message">' + $('<div>').text(errorMessage).html() + '</div>';
+		html += '<div class="ldmcs-progress-message">' + escapeHtml(errorMessage) + '</div>';
 		html += '</div>';
 		$body.html(html);
 	}
