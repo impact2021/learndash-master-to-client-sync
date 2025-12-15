@@ -1134,9 +1134,15 @@ class LDMCS_Master {
 	 * This method reads the ld_course_steps metadata directly, which contains
 	 * all steps regardless of their post status. This is useful when 
 	 * learndash_course_get_steps returns empty because it only returns published posts.
+	 * 
+	 * Error Handling:
+	 * - Returns empty array if metadata is missing
+	 * - Returns empty array if metadata is not in expected format
+	 * - Skips invalid lesson IDs (non-numeric or zero)
+	 * - Skips invalid topic IDs (non-numeric or zero)
 	 *
 	 * @param int $course_id Course ID.
-	 * @return array Array of step post IDs.
+	 * @return array Array of step post IDs (lessons and topics).
 	 */
 	private function get_course_steps_from_meta( $course_id ) {
 		$step_ids = array();
@@ -1152,7 +1158,8 @@ class LDMCS_Master {
 		if ( isset( $course_steps['sfwd-lessons'] ) && is_array( $course_steps['sfwd-lessons'] ) ) {
 			foreach ( $course_steps['sfwd-lessons'] as $lesson_key => $topics ) {
 				// Lesson keys are prefixed with 'h' (e.g., 'h123').
-				$lesson_id = intval( str_replace( 'h', '', $lesson_key ) );
+				// Use ltrim to only remove the leading 'h' character.
+				$lesson_id = intval( ltrim( $lesson_key, 'h' ) );
 				if ( $lesson_id > 0 ) {
 					$step_ids[] = $lesson_id;
 					
