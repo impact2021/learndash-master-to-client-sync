@@ -41,6 +41,10 @@ class LDMCS_Admin {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
+
+		// Add UUID column to courses list.
+		add_filter( 'manage_sfwd-courses_posts_columns', array( $this, 'add_uuid_column' ) );
+		add_action( 'manage_sfwd-courses_posts_custom_column', array( $this, 'render_uuid_column' ), 10, 2 );
 	}
 
 	/**
@@ -502,5 +506,62 @@ class LDMCS_Admin {
 			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Add UUID column to courses list.
+	 *
+	 * @param array $columns Existing columns.
+	 * @return array Modified columns.
+	 */
+	public function add_uuid_column( $columns ) {
+		$mode = get_option( 'ldmcs_mode', 'client' );
+
+		// Insert UUID column after the title column.
+		$new_columns = array();
+		foreach ( $columns as $key => $value ) {
+			$new_columns[ $key ] = $value;
+			if ( 'title' === $key ) {
+				if ( 'master' === $mode ) {
+					$new_columns['ldmcs_uuid'] = __( 'Master UUID', 'learndash-master-client-sync' );
+				} else {
+					$new_columns['ldmcs_uuid'] = __( 'UUID', 'learndash-master-client-sync' );
+				}
+			}
+		}
+
+		return $new_columns;
+	}
+
+	/**
+	 * Render UUID column content.
+	 *
+	 * @param string $column  Column name.
+	 * @param int    $post_id Post ID.
+	 */
+	public function render_uuid_column( $column, $post_id ) {
+		if ( 'ldmcs_uuid' !== $column ) {
+			return;
+		}
+
+		$mode = get_option( 'ldmcs_mode', 'client' );
+
+		if ( 'master' === $mode ) {
+			// On master site, show the local post ID as the master UUID.
+			echo '<strong>' . esc_html( $post_id ) . '</strong>';
+		} else {
+			// On client site, show both local ID and master UUID.
+			$master_id = get_post_meta( $post_id, '_ldmcs_master_id', true );
+			
+			echo '<div class="ldmcs-uuid-info">';
+			echo '<div><strong>' . esc_html__( 'Local:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $post_id ) . '</div>';
+			
+			if ( $master_id ) {
+				echo '<div><strong>' . esc_html__( 'Master:', 'learndash-master-client-sync' ) . '</strong> ' . esc_html( $master_id ) . '</div>';
+			} else {
+				echo '<div class="ldmcs-no-master-id"><em>' . esc_html__( 'Not synced', 'learndash-master-client-sync' ) . '</em></div>';
+			}
+			echo '</div>';
+		}
 	}
 }

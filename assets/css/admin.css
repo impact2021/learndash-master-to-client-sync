@@ -184,3 +184,17 @@
 .wp-list-table .row-actions span {
 	display: inline-block;
 }
+
+/* UUID column in courses list */
+.column-ldmcs_uuid {
+	width: 140px;
+}
+
+.ldmcs-uuid-info div {
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.ldmcs-no-master-id {
+	color: #999;
+}
