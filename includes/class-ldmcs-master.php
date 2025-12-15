@@ -671,10 +671,50 @@ class LDMCS_Master {
 	private function get_related_course_content( $course_id ) {
 		$items = array();
 
+		// Log initial state for debugging.
+		LDMCS_Logger::log(
+			'master_push',
+			'courses',
+			$course_id,
+			'debug',
+			sprintf( 'Starting get_related_course_content for course ID %d', $course_id )
+		);
+
 		// Use LearnDash's core function to get all course steps if available (LearnDash 3.0+).
 		if ( function_exists( 'learndash_course_get_steps' ) ) {
 			// Get all steps (lessons and topics) for the course.
 			$course_steps = learndash_course_get_steps( $course_id );
+			
+			// Log what we found.
+			LDMCS_Logger::log(
+				'master_push',
+				'courses',
+				$course_id,
+				'debug',
+				sprintf( 'learndash_course_get_steps returned %d steps', is_array( $course_steps ) ? count( $course_steps ) : 0 )
+			);
+			
+			// If learndash_course_get_steps returns empty, try reading directly from metadata.
+			// This is important because learndash_course_get_steps only returns published posts.
+			if ( empty( $course_steps ) ) {
+				LDMCS_Logger::log(
+					'master_push',
+					'courses',
+					$course_id,
+					'debug',
+					'learndash_course_get_steps returned empty, trying direct metadata read'
+				);
+				
+				$course_steps = $this->get_course_steps_from_meta( $course_id );
+				
+				LDMCS_Logger::log(
+					'master_push',
+					'courses',
+					$course_id,
+					'debug',
+					sprintf( 'Direct metadata read returned %d steps', count( $course_steps ) )
+				);
+			}
 			
 			if ( ! empty( $course_steps ) ) {
 				foreach ( $course_steps as $step_id ) {
@@ -719,6 +759,16 @@ class LDMCS_Master {
 
 			// Get course-level quizzes using LearnDash 3.0+ method.
 			$course_quizzes = learndash_course_get_children( $course_id, 'sfwd-quiz' );
+			
+			// Log what we found for quizzes.
+			LDMCS_Logger::log(
+				'master_push',
+				'courses',
+				$course_id,
+				'debug',
+				sprintf( 'learndash_course_get_children (quizzes) returned %d quizzes', is_array( $course_quizzes ) ? count( $course_quizzes ) : 0 )
+			);
+			
 			if ( ! empty( $course_quizzes ) && is_array( $course_quizzes ) ) {
 				foreach ( $course_quizzes as $quiz_id ) {
 					$quiz_post = get_post( $quiz_id );
@@ -738,8 +788,32 @@ class LDMCS_Master {
 			}
 		} else {
 			// Fallback for older LearnDash versions or alternative approach.
+			LDMCS_Logger::log(
+				'master_push',
+				'courses',
+				$course_id,
+				'debug',
+				'learndash_course_get_steps function not available, using legacy method'
+			);
+			
 			$items = $this->get_related_course_content_legacy( $course_id );
+			
+			LDMCS_Logger::log(
+				'master_push',
+				'courses',
+				$course_id,
+				'debug',
+				sprintf( 'Legacy method returned %d items', count( $items ) )
+			);
 		}
+
+		LDMCS_Logger::log(
+			'master_push',
+			'courses',
+			$course_id,
+			'debug',
+			sprintf( 'Total items collected: %d', count( $items ) )
+		);
 
 		return $items;
 	}
@@ -1031,6 +1105,54 @@ class LDMCS_Master {
 		}
 
 		return array();
+	}
+
+	/**
+	 * Get course steps directly from metadata (doesn't filter by post status).
+	 * 
+	 * This method reads the ld_course_steps metadata directly, which contains
+	 * all steps regardless of their post status. This is useful when 
+	 * learndash_course_get_steps returns empty because it only returns published posts.
+	 *
+	 * @param int $course_id Course ID.
+	 * @return array Array of step post IDs.
+	 */
+	private function get_course_steps_from_meta( $course_id ) {
+		$step_ids = array();
+		
+		// Get the ld_course_steps metadata.
+		$course_steps = get_post_meta( $course_id, 'ld_course_steps', true );
+		
+		if ( empty( $course_steps ) || ! is_array( $course_steps ) ) {
+			return $step_ids;
+		}
+		
+		// Process lessons (which may have nested topics).
+		if ( isset( $course_steps['sfwd-lessons'] ) && is_array( $course_steps['sfwd-lessons'] ) ) {
+			foreach ( $course_steps['sfwd-lessons'] as $lesson_key => $topics ) {
+				// Lesson keys are prefixed with 'h' (e.g., 'h123').
+				$lesson_id = intval( str_replace( 'h', '', $lesson_key ) );
+				if ( $lesson_id > 0 ) {
+					$step_ids[] = $lesson_id;
+					
+					// Add topics nested under this lesson.
+					if ( is_array( $topics ) ) {
+						foreach ( array_keys( $topics ) as $topic_id ) {
+							$topic_id = intval( $topic_id );
+							if ( $topic_id > 0 ) {
+								$step_ids[] = $topic_id;
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		// Note: We don't include quizzes here as they are handled separately.
+		// The ld_course_steps structure includes quizzes in the 'sfwd-quiz' key,
+		// but we handle those separately to avoid duplication.
+		
+		return $step_ids;
 	}
 
 	/**
