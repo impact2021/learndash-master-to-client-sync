@@ -13,6 +13,10 @@
 // Prevent direct access
 if (!defined('ABSPATH')) exit;
 
+// Plugin Configuration Constants
+define('LD_SYNC_PUSH_TIMEOUT', 45); // Push request timeout in seconds
+define('LD_SYNC_RATE_LIMIT', 10);   // Max test endpoint requests per minute per IP
+
 // =========================================================================
 // ADMIN MENU REGISTRATION
 // =========================================================================
@@ -195,7 +199,7 @@ function ld_sync_handle_push_action() {
 
         $response = wp_remote_post($url, [
             'method'  => 'POST',
-            'timeout' => 45,
+            'timeout' => LD_SYNC_PUSH_TIMEOUT,
             'headers' => ['Content-Type' => 'application/json'],
             'body'    => wp_json_encode($body),
         ]);
@@ -560,18 +564,19 @@ function ld_sync_register_rest_routes() {
     register_rest_route('ld-sync/v1', '/test', [
         'methods'  => 'GET',
         'callback' => function () {
-            // Simple rate limiting: max 10 requests per minute per IP
-            // Check for real IP behind proxies/load balancers
+            // Rate limiting based on IP address
+            // Check for real IP behind proxies/load balancers (use last IP in chain)
             $ip = 'unknown';
             if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-                $ip = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR']));
+                $forwarded_ips = array_map('trim', explode(',', sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR']))));
+                $ip = end($forwarded_ips); // Last IP is typically the most reliable
             } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
                 $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
             }
             $transient_key = 'ld_sync_test_rate_' . md5($ip);
             $request_count = get_transient($transient_key) ?: 0;
             
-            if ($request_count > 10) {
+            if ($request_count > LD_SYNC_RATE_LIMIT) {
                 return new WP_Error(
                     'rate_limit_exceeded',
                     'Too many requests. Please try again later.',

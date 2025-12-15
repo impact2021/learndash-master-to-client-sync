@@ -10,7 +10,12 @@ This plugin combines two functionalities into a single, easy-to-edit file:
 
 The plugin is organized in `/learndash-sync.php` with the following sections:
 
-### 1. Admin Menu Registration (Lines ~20-45)
+### 0. Configuration Constants (Lines ~16-18)
+- `LD_SYNC_PUSH_TIMEOUT` - Push request timeout (default: 45 seconds)
+- `LD_SYNC_RATE_LIMIT` - Max test endpoint requests per minute per IP (default: 10)
+- **Easy to edit**: Change these values to adjust plugin behavior
+
+### 1. Admin Menu Registration (Lines ~23-48)
 - Registers main menu "LearnDash Sync"
 - Creates two submenus: "Master Push" and "Client Receive"
 - **Easy to edit**: Change menu labels, icons, or positions here
@@ -85,12 +90,18 @@ if (!empty($data['my_custom_field'])) {
 
 ### 2. Change Timeout for Push
 
-Find line ~200 in the push function:
+Find the constant at the top of the file (line ~16):
+
+```php
+define('LD_SYNC_PUSH_TIMEOUT', 45); // Change this value (in seconds)
+```
+
+Or find line ~203 in the push function:
 
 ```php
 $response = wp_remote_post($url, [
     'method'  => 'POST',
-    'timeout' => 45,  // Change this value (in seconds)
+    'timeout' => LD_SYNC_PUSH_TIMEOUT,  // Uses constant defined at top
     'headers' => ['Content-Type' => 'application/json'],
     'body'    => wp_json_encode($body),
 ]);
