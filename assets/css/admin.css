@@ -1,0 +1,139 @@
+/**
+ * Admin styles for LearnDash Master to Client Sync
+ */
+
+/* Status indicators */
+.ldmcs-status {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.ldmcs-status-success {
+	background-color: #46b450;
+	color: #fff;
+}
+
+.ldmcs-status-error {
+	background-color: #dc3232;
+	color: #fff;
+}
+
+.ldmcs-status-skipped {
+	background-color: #ffb900;
+	color: #fff;
+}
+
+.ldmcs-status-updated {
+	background-color: #00a0d2;
+	color: #fff;
+}
+
+/* Connection status */
+#ldmcs-connection-status,
+#ldmcs-sync-status {
+	margin-top: 10px;
+	padding: 10px;
+	border-radius: 4px;
+	display: none;
+}
+
+#ldmcs-connection-status.success,
+#ldmcs-sync-status.success {
+	background-color: #ecf7ed;
+	border: 1px solid #46b450;
+	color: #46b450;
+}
+
+#ldmcs-connection-status.error,
+#ldmcs-sync-status.error {
+	background-color: #f8d7da;
+	border: 1px solid #dc3232;
+	color: #dc3232;
+}
+
+#ldmcs-connection-status.loading,
+#ldmcs-sync-status.loading {
+	background-color: #f0f6fc;
+	border: 1px solid #0073aa;
+	color: #0073aa;
+}
+
+/* Loading spinner */
+.ldmcs-spinner {
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+	border: 3px solid rgba(0, 0, 0, 0.1);
+	border-radius: 50%;
+	border-top-color: #0073aa;
+	animation: ldmcs-spin 0.8s linear infinite;
+	vertical-align: middle;
+	margin-right: 8px;
+}
+
+@keyframes ldmcs-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Sync results table */
+.ldmcs-sync-results {
+	margin-top: 15px;
+}
+
+.ldmcs-sync-results table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.ldmcs-sync-results th,
+.ldmcs-sync-results td {
+	padding: 10px;
+	text-align: left;
+	border-bottom: 1px solid #ddd;
+}
+
+.ldmcs-sync-results th {
+	background-color: #f1f1f1;
+	font-weight: 600;
+}
+
+/* Button states */
+.button.ldmcs-disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+/* Settings form improvements */
+.form-table th {
+	width: 200px;
+}
+
+.form-table input[type="text"],
+.form-table input[type="url"] {
+	width: 400px;
+}
+
+.form-table .description {
+	margin-top: 5px;
+	font-style: italic;
+}
+
+/* Logs page */
+.ldmcs-logs-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+}
+
+.ldmcs-logs-actions {
+	display: flex;
+	gap: 10px;
+}
