@@ -215,7 +215,38 @@ function ld_sync_handle_push_action() {
     echo '<div class="notice notice-success"><p>Push completed!</p></div>';
     echo '<h2>Push Results</h2>';
     echo '<div style="background: #f5f5f5; padding: 15px; border: 1px solid #ddd; border-radius: 3px;">';
-    echo '<pre style="overflow-x: auto;">' . esc_html(print_r($results, true)) . '</pre>';
+    
+    // Display results in a safe, formatted way (without exposing sensitive data)
+    foreach ($results as $url => $result) {
+        $safe_url = esc_html(preg_replace('/^(https?:\/\/)/', '$1', parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST)));
+        echo '<h3>' . $safe_url . '</h3>';
+        
+        if (isset($result['error'])) {
+            echo '<p style="color: #dc3232;"><strong>Error:</strong> ' . esc_html($result['error']) . '</p>';
+        } else {
+            echo '<p style="color: #46b450;"><strong>Status Code:</strong> ' . intval($result['code']) . '</p>';
+            if (isset($result['response']['status'])) {
+                echo '<p><strong>Response:</strong> ' . esc_html($result['response']['status']) . '</p>';
+            }
+            if (isset($result['response']['message'])) {
+                echo '<p><strong>Message:</strong> ' . esc_html($result['response']['message']) . '</p>';
+            }
+            if (isset($result['response']['result'])) {
+                $counts = [
+                    'courses' => count($result['response']['result']['courses'] ?? []),
+                    'lessons' => count($result['response']['result']['lessons'] ?? []),
+                    'topics' => count($result['response']['result']['topics'] ?? []),
+                    'quizzes' => count($result['response']['result']['quizzes'] ?? []),
+                    'questions' => count($result['response']['result']['questions'] ?? []),
+                ];
+                echo '<p><strong>Synced:</strong> ' . intval($counts['courses']) . ' courses, ' . 
+                     intval($counts['lessons']) . ' lessons, ' . intval($counts['topics']) . ' topics, ' . 
+                     intval($counts['quizzes']) . ' quizzes, ' . intval($counts['questions']) . ' questions</p>';
+            }
+        }
+        echo '<hr>';
+    }
+    
     echo '</div>';
 }
 
@@ -530,7 +561,13 @@ function ld_sync_register_rest_routes() {
         'methods'  => 'GET',
         'callback' => function () {
             // Simple rate limiting: max 10 requests per minute per IP
-            $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            // Check for real IP behind proxies/load balancers
+            $ip = 'unknown';
+            if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+                $ip = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR']));
+            } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
+                $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
+            }
             $transient_key = 'ld_sync_test_rate_' . md5($ip);
             $request_count = get_transient($transient_key) ?: 0;
             
