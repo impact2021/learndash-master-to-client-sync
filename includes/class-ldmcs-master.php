@@ -300,7 +300,7 @@ class LDMCS_Master {
 			$error_message = sprintf(
 				/* translators: %s: course title */
 				__( 'Failed to push course "%s" to any client sites.', 'learndash-master-client-sync' ),
-				$course->post_title
+				esc_html( $course->post_title )
 			);
 			
 			if ( ! empty( $error_details ) ) {
@@ -399,7 +399,7 @@ class LDMCS_Master {
 			$error_message = sprintf(
 				/* translators: %s: content title */
 				__( 'Failed to push "%s" to any client sites.', 'learndash-master-client-sync' ),
-				$post->post_title
+				esc_html( $post->post_title )
 			);
 			
 			if ( ! empty( $error_details ) ) {

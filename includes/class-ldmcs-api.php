@@ -116,7 +116,7 @@ class LDMCS_API {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'receive_pushed_content' ),
-				'permission_callback' => array( $this, 'check_api_key' ),
+				'permission_callback' => array( $this, 'check_master_api_key' ),
 			)
 		);
 	}
@@ -152,6 +152,46 @@ class LDMCS_API {
 		$stored_api_key = get_option( 'ldmcs_api_key' );
 
 		if ( $api_key !== $stored_api_key ) {
+			return new WP_Error(
+				'ldmcs_invalid_api_key',
+				__( 'Invalid API key.', 'learndash-master-client-sync' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Check master API key permission for receiving pushed content.
+	 * On client sites, this validates that the push request is coming from the configured master site.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return bool|WP_Error
+	 */
+	public function check_master_api_key( $request ) {
+		$api_key = $request->get_header( 'X-LDMCS-API-Key' );
+
+		if ( empty( $api_key ) ) {
+			return new WP_Error(
+				'ldmcs_missing_api_key',
+				__( 'API key is missing.', 'learndash-master-client-sync' ),
+				array( 'status' => 401 )
+			);
+		}
+
+		// On client sites, check against the master's API key that was configured
+		$master_api_key = get_option( 'ldmcs_master_api_key' );
+
+		if ( empty( $master_api_key ) ) {
+			return new WP_Error(
+				'ldmcs_not_configured',
+				__( 'Master API key is not configured.', 'learndash-master-client-sync' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		if ( $api_key !== $master_api_key ) {
 			return new WP_Error(
 				'ldmcs_invalid_api_key',
 				__( 'Invalid API key.', 'learndash-master-client-sync' ),
